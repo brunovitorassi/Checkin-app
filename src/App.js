@@ -71,6 +71,41 @@ const S = {
   }),
 };
 
+
+// ─── MOBILE GUARD ─────────────────────────────────────────────────────────────
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent));
+};
+
+function MobileOnly() {
+  return (
+    <div style={{
+      minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
+      background:"linear-gradient(135deg,#07101f 0%,#0b1829 60%,#071220 100%)",
+      fontFamily:"'DM Sans','Segoe UI',sans-serif", color:"#e2e8f0", padding:32, textAlign:"center",
+    }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Space+Mono:wght@700&display=swap');*{box-sizing:border-box;margin:0;padding:0}`}</style>
+      <div>
+        <div style={{ fontSize:72, marginBottom:24 }}>📱</div>
+        <h1 style={{ fontFamily:"'Space Mono',monospace", fontSize:22, fontWeight:700, marginBottom:12 }}>
+          Acesso apenas pelo celular
+        </h1>
+        <p style={{ color:"#4a6080", fontSize:15, lineHeight:1.7, maxWidth:320, margin:"0 auto" }}>
+          O CheckPoint foi desenvolvido para uso em dispositivos móveis.<br/><br/>
+          Por favor, acesse pelo seu <strong style={{color:"#38bdf8"}}>smartphone</strong>.
+        </p>
+        <div style={{ marginTop:32, display:"inline-flex", alignItems:"center", gap:10,
+          background:"rgba(56,189,248,.08)", border:"1px solid rgba(56,189,248,.2)",
+          borderRadius:12, padding:"12px 20px" }}>
+          <span style={{ fontSize:20 }}>🔒</span>
+          <span style={{ fontSize:13, color:"#38bdf8", fontWeight:600 }}>Restrito a dispositivos móveis</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── LOGIN ─────────────────────────────────────────────────────────────────────
 function LoginScreen({ onLogin }) {
   const [email, setEmail] = useState(""); const [senha, setSenha] = useState("");
@@ -115,9 +150,10 @@ function LoginScreen({ onLogin }) {
 function CheckInModal({ user, onConfirm, onCancel, loading }) {
   const [codigo, setCodigo] = useState("");
   const [resumo, setResumo] = useState("");
-  const [loja, setLoja] = useState(LOJAS[0]);
+  const [loja, setLoja] = useState("");
   const [erro, setErro] = useState("");
   const handleConfirm = () => {
+    if (!loja) { setErro("Selecione a loja."); return; }
     if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
     setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja });
@@ -135,7 +171,8 @@ function CheckInModal({ user, onConfirm, onCancel, loading }) {
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
           <div>
             <label style={S.label}>Loja</label>
-            <select style={{ ...S.input, appearance:"none" }} value={loja} onChange={e=>setLoja(e.target.value)}>
+            <select style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080" }} value={loja} onChange={e=>setLoja(e.target.value)}>
+              <option value="" disabled>Selecione uma loja...</option>
               {LOJAS.map(l=><option key={l} value={l}>{l}</option>)}
             </select>
           </div>
@@ -413,7 +450,8 @@ export default function App() {
   ];
   useEffect(() => { if (isAdmin && tab === "checkin") setTab("historico"); }, [isAdmin]);
 
-  if (!user) return <LoginScreen onLogin={handleLogin} />;
+  if (!isMobile() && user?.role !== "admin") return <MobileOnly />;
+  if (!user) { if (!isMobile()) return <MobileOnly />; return <LoginScreen onLogin={handleLogin} />; }
 
   return (
     <div style={S.page}>
