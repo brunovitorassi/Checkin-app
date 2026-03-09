@@ -78,12 +78,14 @@ const isMobile = () => {
     (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent));
 };
 
-function MobileOnly() {
+function MobileOnly({ onAdminAccess }) {
+  const [showAdmin, setShowAdmin] = useState(false);
   return (
     <div style={{
       minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center",
       background:"linear-gradient(135deg,#07101f 0%,#0b1829 60%,#071220 100%)",
       fontFamily:"'DM Sans','Segoe UI',sans-serif", color:"#e2e8f0", padding:32, textAlign:"center",
+      flexDirection:"column",
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Space+Mono:wght@700&display=swap');*{box-sizing:border-box;margin:0;padding:0}`}</style>
       <div>
@@ -102,6 +104,22 @@ function MobileOnly() {
           <span style={{ fontSize:13, color:"#38bdf8", fontWeight:600 }}>Restrito a dispositivos móveis</span>
         </div>
       </div>
+      <button
+        onClick={() => setShowAdmin(v => !v)}
+        style={{ marginTop:48, background:"none", border:"none", color:"#1e3050", fontSize:12,
+          cursor:"pointer", fontFamily:"inherit", textDecoration:"underline" }}>
+        Acesso administrador
+      </button>
+      {showAdmin && onAdminAccess && (
+        <div style={{ marginTop:12 }}>
+          <button onClick={onAdminAccess}
+            style={{ background:"rgba(255,255,255,.05)", border:"1px solid rgba(255,255,255,.1)",
+              borderRadius:10, padding:"10px 20px", color:"#94a3b8", fontSize:13,
+              cursor:"pointer", fontFamily:"inherit" }}>
+            👑 Entrar como administrador
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -450,8 +468,13 @@ export default function App() {
   ];
   useEffect(() => { if (isAdmin && tab === "checkin") setTab("historico"); }, [isAdmin]);
 
-  if (!isMobile() && user?.role !== "admin") return <MobileOnly />;
-  if (!user) { if (!isMobile()) return <MobileOnly />; return <LoginScreen onLogin={handleLogin} />; }
+  const [adminOverride, setAdminOverride] = useState(false);
+  const isMob = isMobile();
+  if (!isMob && !adminOverride && user?.role !== "admin") return <MobileOnly onAdminAccess={() => setAdminOverride(true)} />;
+  if (!user) {
+    if (!isMob && !adminOverride) return <MobileOnly onAdminAccess={() => setAdminOverride(true)} />;
+    return <LoginScreen onLogin={handleLogin} />;
+  }
 
   return (
     <div style={S.page}>
