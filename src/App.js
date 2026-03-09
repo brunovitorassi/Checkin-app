@@ -33,9 +33,9 @@ const reverseGeocode = async (lat, lng) => {
 };
 
 const exportCSV = (checkins) => {
-  const header = "Usuário,Data/Hora,Endereço,Código Cliente,Resumo da Visita,Latitude,Longitude\n";
+  const header = "Usuário,Data/Hora,Loja,Endereço,Código Cliente,Resumo da Visita,Latitude,Longitude\n";
   const rows = checkins.map(c =>
-    `"${c.usuario}","${formatDate(c.timestamp)}","${c.endereco}","${c.codigo_cliente||""}","${c.resumo_visita||""}","${c.lat}","${c.lng}"`
+    `"${c.usuario}","${formatDate(c.timestamp)}","${c.loja||""}","${c.endereco}","${c.codigo_cliente||""}","${c.resumo_visita||""}","${c.lat}","${c.lng}"`
   ).join("\n");
   const blob = new Blob([header + rows], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -43,6 +43,8 @@ const exportCSV = (checkins) => {
   a.download = `checkins_${new Date().toISOString().slice(0,10)}.csv`; a.click();
   URL.revokeObjectURL(url);
 };
+
+const LOJAS = ["Matriz","Campinas","Palhoça","Tubarão","Ingleses","Rio Tavares","Forquilinhas"];
 
 const todayStr = () => new Date().toISOString().slice(0,10);
 
@@ -113,11 +115,12 @@ function LoginScreen({ onLogin }) {
 function CheckInModal({ user, onConfirm, onCancel, loading }) {
   const [codigo, setCodigo] = useState("");
   const [resumo, setResumo] = useState("");
+  const [loja, setLoja] = useState(LOJAS[0]);
   const [erro, setErro] = useState("");
   const handleConfirm = () => {
     if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
-    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim() });
+    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja });
   };
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20 }}>
@@ -130,6 +133,12 @@ function CheckInModal({ user, onConfirm, onCancel, loading }) {
           </div>
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+          <div>
+            <label style={S.label}>Loja</label>
+            <select style={{ ...S.input, appearance:"none" }} value={loja} onChange={e=>setLoja(e.target.value)}>
+              {LOJAS.map(l=><option key={l} value={l}>{l}</option>)}
+            </select>
+          </div>
           <div>
             <label style={S.label}>Código do Cliente</label>
             <input style={S.input} placeholder="Ex: CLI-0042" value={codigo} onChange={e=>setCodigo(e.target.value)} autoFocus />
@@ -186,6 +195,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
                   {(c.usuario||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
                 </div>
                 <span style={{ fontWeight:600, fontSize:14 }}>{c.usuario}</span>
+                {c.loja && <span style={{ ...S.tag("purple"), fontSize:11 }}>🏪 {c.loja}</span>}
                 {c.codigo_cliente && <span style={{ ...S.tag("orange"), fontSize:11 }}>🏷️ {c.codigo_cliente}</span>}
               </div>
               <div style={{ fontSize:12, color:"#38bdf8", marginBottom:4 }}>🕐 {formatDate(c.timestamp)}</div>
@@ -288,6 +298,8 @@ export default function App() {
   const [filterUser, setFilterUser] = useState("Todos");
   const [filterDe, setFilterDe] = useState(todayStr());
   const [filterAte, setFilterAte] = useState(todayStr());
+  const [filterLoja, setFilterLoja] = useState("Todas");
+  const [filterCliente, setFilterCliente] = useState("");
 
   // Modal
   const [showModal, setShowModal] = useState(false);
@@ -338,7 +350,7 @@ export default function App() {
   };
 
   // Confirma o check-in com os dados do modal
-  const confirmarCheckIn = async ({ codigo_cliente, resumo_visita }) => {
+  const confirmarCheckIn = async ({ codigo_cliente, resumo_visita, loja }) => {
     setLoading(true);
     // Verificar duplicata: mesmo endereço E mesmo código de cliente nos últimos 20min
     const vinte = new Date(Date.now() - 20*60*1000).toISOString();
@@ -358,7 +370,7 @@ export default function App() {
     try {
       const [inserted] = await api("/checkins", {
         method:"POST",
-        body: JSON.stringify({ usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita })
+        body: JSON.stringify({ usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita, loja })
       });
       setCheckins(prev => [inserted, ...prev]);
       setShowModal(false); setPendingPos(null);
@@ -383,6 +395,8 @@ export default function App() {
     if (isAdmin && filterUser !== "Todos") r = r.filter(c => c.usuario === filterUser);
     if (filterDe)  r = r.filter(c => c.timestamp.slice(0,10) >= filterDe);
     if (filterAte) r = r.filter(c => c.timestamp.slice(0,10) <= filterAte);
+    if (filterLoja !== "Todas") r = r.filter(c => c.loja === filterLoja);
+    if (filterCliente.trim()) r = r.filter(c => (c.codigo_cliente||"").toLowerCase().includes(filterCliente.trim().toLowerCase()));
     return r;
   };
 
@@ -487,6 +501,7 @@ export default function App() {
                 <div style={{ background:"#0a1628", border:"1px solid #1a2d4a", borderRadius:12, padding:14 }}>
                   <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                     <div style={{ fontSize:12, color:"#38bdf8" }}>{formatDate(checkins[0].timestamp)}</div>
+                    {checkins[0].loja && <span style={S.tag("purple")}>🏪 {checkins[0].loja}</span>}
                     {checkins[0].codigo_cliente && <span style={S.tag("orange")}>🏷️ {checkins[0].codigo_cliente}</span>}
                   </div>
                   <div style={{ fontSize:12, color:"#8a9ab5", lineHeight:1.5 }}>📍 {checkins[0].endereco}</div>
@@ -518,6 +533,17 @@ export default function App() {
               <div style={{ flex:"1 1 130px" }}>
                 <label style={S.label}>Até</label>
                 <input style={S.input} type="date" value={filterAte} onChange={e=>setFilterAte(e.target.value)} />
+              </div>
+              <div style={{ flex:"1 1 130px" }}>
+                <label style={S.label}>Loja</label>
+                <select style={{ ...S.input, appearance:"none" }} value={filterLoja} onChange={e=>setFilterLoja(e.target.value)}>
+                  <option>Todas</option>
+                  {LOJAS.map(l=><option key={l}>{l}</option>)}
+                </select>
+              </div>
+              <div style={{ flex:"1 1 130px" }}>
+                <label style={S.label}>Código Cliente</label>
+                <input style={S.input} placeholder="Buscar..." value={filterCliente} onChange={e=>setFilterCliente(e.target.value)} />
               </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button className="hvr" style={{ ...S.btn("ghost"), padding:"11px 13px", fontSize:12 }} onClick={fetchCheckins}>🔄</button>
@@ -572,6 +598,17 @@ export default function App() {
               <div style={{ flex:"1 1 120px" }}>
                 <label style={S.label}>Até</label>
                 <input style={S.input} type="date" value={filterAte} onChange={e=>setFilterAte(e.target.value)} />
+              </div>
+              <div style={{ flex:"1 1 120px" }}>
+                <label style={S.label}>Loja</label>
+                <select style={{ ...S.input, appearance:"none" }} value={filterLoja} onChange={e=>setFilterLoja(e.target.value)}>
+                  <option>Todas</option>
+                  {LOJAS.map(l=><option key={l}>{l}</option>)}
+                </select>
+              </div>
+              <div style={{ flex:"1 1 120px" }}>
+                <label style={S.label}>Código Cliente</label>
+                <input style={S.input} placeholder="Buscar..." value={filterCliente} onChange={e=>setFilterCliente(e.target.value)} />
               </div>
             </div>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
