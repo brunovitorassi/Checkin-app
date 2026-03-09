@@ -328,22 +328,6 @@ export default function App() {
       const {latitude:lat, longitude:lng} = pos.coords;
       const endereco = await reverseGeocode(lat, lng);
 
-      // Verificar duplicata: mesmo usuário, endereço parecido, menos de 20min
-      const vinte = new Date(Date.now() - 20*60*1000).toISOString();
-      const recentes = checkins.filter(c =>
-        c.usuario === user.nome &&
-        new Date(c.timestamp) > new Date(vinte) &&
-        Math.abs(c.lat - lat) < 0.002 &&
-        Math.abs(c.lng - lng) < 0.002
-      );
-      if (recentes.length > 0) {
-        const diff = Math.ceil((Date.now() - new Date(recentes[0].timestamp)) / 60000);
-        const restam = 20 - diff;
-        setStatus({ type:"error", msg:`⚠️ Você já realizou um check-in neste local há ${diff} min. Aguarde mais ${restam} min para fazer outro.` });
-        setTimeout(()=>setStatus(null), 6000);
-        setLoading(false); return;
-      }
-
       setPendingPos({ lat, lng, endereco });
       setShowModal(true);
     } catch(e) {
@@ -356,6 +340,21 @@ export default function App() {
   // Confirma o check-in com os dados do modal
   const confirmarCheckIn = async ({ codigo_cliente, resumo_visita }) => {
     setLoading(true);
+    // Verificar duplicata: mesmo endereço E mesmo código de cliente nos últimos 20min
+    const vinte = new Date(Date.now() - 20*60*1000).toISOString();
+    const duplicata = checkins.find(c =>
+      c.usuario === user.nome &&
+      new Date(c.timestamp) > new Date(vinte) &&
+      Math.abs(c.lat - pendingPos.lat) < 0.002 &&
+      Math.abs(c.lng - pendingPos.lng) < 0.002 &&
+      (c.codigo_cliente || "").trim().toLowerCase() === codigo_cliente.trim().toLowerCase()
+    );
+    if (duplicata) {
+      setStatus({ type:"error", msg:"⚠️ Check-in já realizado para este cliente neste endereço. Tente novamente mais tarde." });
+      setTimeout(()=>setStatus(null), 6000);
+      setShowModal(false); setPendingPos(null);
+      setLoading(false); return;
+    }
     try {
       const [inserted] = await api("/checkins", {
         method:"POST",
@@ -391,13 +390,14 @@ export default function App() {
   const totalToday = checkins.filter(c=>new Date(c.timestamp).toDateString()===new Date().toDateString()).length;
 
   const tabs = [
-    { id:"checkin",   label:"Check-in", icon:"✅" },
+    ...(!isAdmin ? [{ id:"checkin", label:"Check-in", icon:"✅" }] : []),
     { id:"historico", label:"Histórico", icon:"📋" },
     ...(isAdmin ? [
       { id:"mapa",     label:"Mapa",     icon:"🗺️" },
       { id:"usuarios", label:"Usuários", icon:"👥" },
     ] : []),
   ];
+  useEffect(() => { if (isAdmin && tab === "checkin") setTab("historico"); }, [isAdmin]);
 
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
