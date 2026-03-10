@@ -228,23 +228,28 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
     if (!cod.trim()) { setClienteInfo(null); return; }
     setValidando(true); setClienteInfo(null); setErro("");
     try {
-      const res = await fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(cod.trim())}`, {
-        headers: { "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1amF0dnB1b3dnanhiZGJ2bndkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNjMyMjYsImV4cCI6MjA4ODYzOTIyNn0.vZFEuWkNwyQRmxUYMsqBHLoqYkJsNQRXRjvjdObKMbA" }
-      });
-      const data = await res.json();
-      if (!res.ok || data.erro) {
+      const res = await fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(cod.trim())}`);
+      let data: any = {};
+      try { data = await res.json(); } catch { data = {}; }
+
+      if (res.status === 404 || !res.ok) {
         setClienteInfo({ status: "nao_encontrado" });
         setValidando(false); return;
       }
-      // Compare CRM address with GPS address (city + street fuzzy match)
+
+      if (!data.endereco) {
+        setClienteInfo({ status: "nao_encontrado" });
+        setValidando(false); return;
+      }
+
+      // Compare CRM address with GPS address
       const endCRM = data.endereco;
-      const enderecoTexto = `${endCRM.logradouro} ${endCRM.numero} ${endCRM.bairro} ${endCRM.cidade}`.toLowerCase().replace(/\s+/g,' ');
-      const gpsTexto = (gpsEndereco || "").toLowerCase();
-      // Check if city matches
-      const cidadeOk = gpsTexto.includes(endCRM.cidade.toLowerCase());
-      // Check if street matches (first word of logradouro)
-      const primeiraRua = endCRM.logradouro.split(" ").slice(0,2).join(" ").toLowerCase();
-      const ruaOk = gpsTexto.includes(primeiraRua);
+      const gpsTexto = (gpsEndereco || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const cidadeCRM = endCRM.cidade.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const logradouroCRM = endCRM.logradouro.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const primeiraPalavraRua = logradouroCRM.split(" ").filter((w: string) => w.length > 3)[0] || logradouroCRM.split(" ")[0];
+      const cidadeOk = gpsTexto.includes(cidadeCRM);
+      const ruaOk = gpsTexto.includes(primeiraPalavraRua);
       const match = cidadeOk && ruaOk;
       setClienteInfo({ status: match ? "ok" : "divergente", nome: data.nome, enderecoCRM: endCRM.enderecoCompleto, match });
     } catch { setClienteInfo({ status: "erro_api" }); }
