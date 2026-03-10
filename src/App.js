@@ -282,20 +282,20 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
     setErro(""); setValidando(true); setClienteInfo(null);
     try {
       const res = await fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(codigo.trim())}`);
-      let data: any = {};
+      let data = {};
       try { data = await res.json(); } catch { data = {}; }
 
       if (res.status === 404 || !res.ok || !data.endereco) {
         setClienteInfo({ status: "nao_encontrado" });
-        setValidando(false); return;
+        setValidando(false); setEtapa(2); return;
       }
 
       const endCRM = data.endereco;
-      const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const normalize = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
       const gpsTexto = normalize(gpsEndereco || "");
       const cidadeCRM = normalize(endCRM.cidade);
       const logradouroCRM = normalize(endCRM.logradouro);
-      const primeiraPalavraRua = logradouroCRM.split(" ").filter((w: string) => w.length > 3)[0] || logradouroCRM.split(" ")[0];
+      const primeiraPalavraRua = logradouroCRM.split(" ").filter((w) => w.length > 3)[0] || logradouroCRM.split(" ")[0];
       const match = gpsTexto.includes(cidadeCRM) && gpsTexto.includes(primeiraPalavraRua);
 
       if (data.loja) setLoja(data.loja);
@@ -311,7 +311,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
     setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja, endereco_status: clienteInfo?.status ?? "nao_verificado" });
   };
 
-  const statusColors: any = {
+  const statusColors = {
     ok:            { bg:"rgba(34,197,94,.08)",   border:"rgba(34,197,94,.25)",   color:"#4ade80" },
     divergente:    { bg:"rgba(251,146,60,.08)",  border:"rgba(251,146,60,.25)",  color:"#fb923c" },
     nao_encontrado:{ bg:"rgba(239,68,68,.08)",   border:"rgba(239,68,68,.25)",   color:"#f87171" },
@@ -455,18 +455,18 @@ function MapView({ checkins }) {
 function resumirEndereco(end) {
   if (!end) return "-";
   // Nominatim format: "Street, Number, Neighbourhood, City, Region, State, CEP, Country"
-  const parts = end.split(",").map((p: string) => p.trim());
+  const parts = end.split(",").map((p) => p.trim());
   const rua = parts[0] || "";
   const numero = parts[1] || "";
   // City is usually 3rd or 4th from end (before state/region/CEP/country)
   const cidade = parts.length >= 4
-    ? parts.find((p: string, i: number) => i >= 2 && i <= parts.length - 4 && p.length > 2 && !/^\d/.test(p) && !p.includes("Região")) || ""
+    ? parts.find((p, i) => i >= 2 && i <= parts.length - 4 && p.length > 2 && !/^\d/.test(p) && !p.includes("Região")) || ""
     : "";
   const ruaNum = numero && /^\d/.test(numero) ? `${rua}, ${numero}` : rua;
   return cidade ? `${ruaNum} — ${cidade}` : ruaNum || end.slice(0, 50);
 }
 
-const ENDERECO_STATUS_STYLE: any = {
+const ENDERECO_STATUS_STYLE = {
   ok:             { color:"#4ade80", icon:"✅", title:"Endereço confere com o CRM" },
   divergente:     { color:"#fb923c", icon:"⚠️", title:"Endereço diverge do CRM" },
   nao_encontrado: { color:"#f87171", icon:"❌", title:"Cliente não encontrado no CRM" },
@@ -482,8 +482,8 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
     ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", ""]
     : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo"];
 
-  const thStyle: any = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
-  const tdStyle: any = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
+  const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
+  const tdStyle = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
 
   return (
     <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid #1a2d4a" }}>
@@ -496,7 +496,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
         <tbody>
           {checkins.map((c, i) => {
             const est = ENDERECO_STATUS_STYLE[c.endereco_status || "nao_verificado"];
-            const avatar = (c.usuario||"?").split(" ").map((n: string)=>n[0]).join("").slice(0,2).toUpperCase();
+            const avatar = (c.usuario||"?").split(" ").map((n)=>n[0]).join("").slice(0,2).toUpperCase();
             const avatarBg = `hsl(${(c.usuario||"").charCodeAt(0)*7%360},55%,35%)`;
             return (
               <tr key={c.id} style={{ background: i%2===0 ? "#0a1628" : "#07101f" }}
