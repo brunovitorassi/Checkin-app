@@ -327,8 +327,16 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
 
             {/* Loja */}
             <div>
-              <label style={S.label}>Loja</label>
-              <select style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080" }} value={loja} onChange={e=>setLoja(e.target.value)}>
+              <label style={S.label}>
+                Loja
+                {!loja && clienteInfo && clienteInfo.status !== "nao_encontrado" && (
+                  <span style={{ marginLeft:6, fontSize:10, color:"#fb923c", fontWeight:600 }}>⚠️ Selecione manualmente</span>
+                )}
+                {loja && <span style={{ marginLeft:6, fontSize:10, color:"#4ade80" }}>✓ Pré-selecionada pelo CRM</span>}
+              </label>
+              <select style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080",
+                borderColor: !loja && clienteInfo ? "rgba(251,146,60,.5)" : undefined }} 
+                value={loja} onChange={e=>setLoja(e.target.value)}>
                 <option value="" disabled>Selecione uma loja...</option>
                 {LOJAS.map(l=><option key={l} value={l}>{l}</option>)}
               </select>
