@@ -215,6 +215,7 @@ function LoginScreen({ onLogin }) {
 
 // ─── MODAL DE CHECK-IN ─────────────────────────────────────────────────────────
 const EDGE_FUNCTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/functions/v1/buscar-cliente";
+const TRANSCRIPTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/functions/v1/transcrever-audio";
 
 function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
   const [etapa, setEtapa] = useState(1); // 1 = código, 2 = loja + resumo
@@ -224,6 +225,57 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
   const [erro, setErro] = useState("");
   const [validando, setValidando] = useState(false);
   const [clienteInfo, setClienteInfo] = useState(null);
+  const [gravando, setGravando] = useState(false);
+  const [transcrevendo, setTranscrevendo] = useState(false);
+  const [erroAudio, setErroAudio] = useState("");
+  const mediaRecorderRef = React.useRef(null);
+  const chunksRef = React.useRef([]);
+
+  const iniciarGravacao = async () => {
+    setErroAudio("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4" });
+      chunksRef.current = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
+        await transcreverAudio(blob, mr.mimeType);
+      };
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setGravando(true);
+    } catch {
+      setErroAudio("Não foi possível acessar o microfone. Verifique as permissões.");
+    }
+  };
+
+  const pararGravacao = () => {
+    if (mediaRecorderRef.current && gravando) {
+      mediaRecorderRef.current.stop();
+      setGravando(false);
+    }
+  };
+
+  const transcreverAudio = async (blob, mimeType) => {
+    setTranscrevendo(true);
+    try {
+      const ext = mimeType.includes("mp4") ? "audio.mp4" : "audio.webm";
+      const fd = new FormData();
+      fd.append("audio", blob, ext);
+      const res = await fetch(TRANSCRIPTION_URL, { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.texto) {
+        setResumo(prev => prev ? `${prev} ${data.texto}` : data.texto);
+      } else {
+        setErroAudio("Não foi possível transcrever. Tente novamente.");
+      }
+    } catch {
+      setErroAudio("Erro na transcrição. Tente novamente.");
+    }
+    setTranscrevendo(false);
+  };
 
   const buscarCliente = async () => {
     if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
@@ -344,11 +396,19 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
 
             {/* Resumo */}
             <div>
-              <label style={S.label}>Resumo da Visita</label>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
+                <label style={{ ...S.label, margin:0 }}>Resumo da Visita</label>
+                <button onClick={gravando ? pararGravacao : iniciarGravacao} disabled={transcrevendo}
+                  style={{ display:"flex", alignItems:"center", gap:5, background: gravando ? "rgba(239,68,68,.15)" : "rgba(14,165,233,.1)", border: gravando ? "1px solid rgba(239,68,68,.4)" : "1px solid rgba(14,165,233,.3)", borderRadius:8, padding:"5px 11px", color: gravando ? "#f87171" : "#38bdf8", fontSize:12, fontWeight:600, cursor: transcrevendo ? "not-allowed" : "pointer", fontFamily:"inherit" }}>
+                  {transcrevendo ? <>⏳ Transcrevendo...</> : gravando ? <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f87171", display:"inline-block", animation:"pulse 1s infinite" }} />Parar</> : <>🎤 Gravar</>}
+                </button>
+              </div>
+              {erroAudio && <div style={{ fontSize:11, color:"#f87171", marginBottom:6 }}>⚠️ {erroAudio}</div>}
               <div style={{ position:"relative" }}>
-                <textarea style={{ ...S.textarea, paddingBottom:22 }} placeholder="Descreva brevemente o que foi feito na visita..."
+                <textarea style={{ ...S.textarea, paddingBottom:22, opacity: transcrevendo ? 0.6 : 1 }}
+                  placeholder={transcrevendo ? "Transcrevendo áudio..." : "Descreva brevemente o que foi feito na visita..."}
                   value={resumo} maxLength={1000}
-                  onChange={e=>setResumo(e.target.value)} autoFocus />
+                  onChange={e=>setResumo(e.target.value)} />
                 <div style={{ position:"absolute", bottom:8, right:12, fontSize:10, color: resumo.length > 900 ? "#fb923c" : "#4a6080" }}>
                   {resumo.length}/1000
                 </div>
