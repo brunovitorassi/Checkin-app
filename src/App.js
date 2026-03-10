@@ -240,10 +240,16 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
       mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType });
-        await transcreverAudio(blob, mr.mimeType);
+        if (chunksRef.current.length === 0) {
+          setErroAudio("Nenhum áudio gravado. Tente novamente.");
+          setTranscrevendo(false);
+          return;
+        }
+        const mimeType = chunksRef.current[0]?.type || mr.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        await transcreverAudio(blob, mimeType);
       };
-      mr.start();
+      mr.start(100); // collect chunks every 100ms
       mediaRecorderRef.current = mr;
       setGravando(true);
     } catch {
@@ -261,9 +267,9 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
   const transcreverAudio = async (blob, mimeType) => {
     setTranscrevendo(true);
     try {
-      const ext = mimeType.includes("mp4") ? "audio.mp4" : "audio.webm";
+      const ext = mimeType.includes("mp4") || mimeType.includes("m4a") ? "audio.mp4" : "audio.webm";
       const fd = new FormData();
-      fd.append("audio", blob, ext);
+      fd.append("audio", new File([blob], ext, { type: mimeType }), ext);
       const res = await fetch(TRANSCRIPTION_URL, { method: "POST", body: fd });
       const data = await res.json();
       if (data.texto) {
@@ -381,10 +387,15 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
             <div>
               <label style={S.label}>
                 Loja
-                {!loja && clienteInfo && clienteInfo.status !== "nao_encontrado" && (
+                {!loja && (
                   <span style={{ marginLeft:6, fontSize:10, color:"#fb923c", fontWeight:600 }}>⚠️ Selecione manualmente</span>
                 )}
-                {loja && <span style={{ marginLeft:6, fontSize:10, color:"#4ade80" }}>✓ Pré-selecionada pelo CRM</span>}
+                {loja && clienteInfo?.loja === loja && (
+                  <span style={{ marginLeft:6, fontSize:10, color:"#4ade80" }}>✓ Pré-selecionada pelo CRM</span>
+                )}
+                {loja && clienteInfo?.loja !== loja && (
+                  <span style={{ marginLeft:6, fontSize:10, color:"#94a3b8" }}>✓ Selecionada manualmente</span>
+                )}
               </label>
               <select style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080",
                 borderColor: !loja && clienteInfo ? "rgba(251,146,60,.5)" : undefined }} 
