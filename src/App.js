@@ -244,14 +244,19 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
 
       // Compare CRM address with GPS address
       const endCRM = data.endereco;
-      const gpsTexto = (gpsEndereco || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      const cidadeCRM = endCRM.cidade.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      const logradouroCRM = endCRM.logradouro.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+      const gpsTexto = normalize(gpsEndereco || "");
+      const cidadeCRM = normalize(endCRM.cidade);
+      const logradouroCRM = normalize(endCRM.logradouro);
       const primeiraPalavraRua = logradouroCRM.split(" ").filter((w: string) => w.length > 3)[0] || logradouroCRM.split(" ")[0];
       const cidadeOk = gpsTexto.includes(cidadeCRM);
       const ruaOk = gpsTexto.includes(primeiraPalavraRua);
       const match = cidadeOk && ruaOk;
-      setClienteInfo({ status: match ? "ok" : "divergente", nome: data.nome, enderecoCRM: endCRM.enderecoCompleto, match });
+
+      // Auto-select loja if returned from API
+      if (data.loja) setLoja(data.loja);
+
+      setClienteInfo({ status: match ? "ok" : "divergente", nome: data.nome, loja: data.loja, enderecoCRM: endCRM.enderecoCompleto, match });
     } catch { setClienteInfo({ status: "erro_api" }); }
     setValidando(false);
   };
@@ -297,8 +302,8 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
                 ...(clienteInfo.status === "nao_encontrado" ? { background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)", color:"#f87171" } : {}),
                 ...(clienteInfo.status === "erro_api"  ? { background:"rgba(100,116,139,.08)",border:"1px solid rgba(100,116,139,.2)",color:"#94a3b8" } : {}),
               }}>
-                {clienteInfo.status === "ok" && <>✅ <strong>{clienteInfo.nome}</strong><br/><span style={{ color:"#86efac", fontSize:11 }}>📍 Endereço confere com o cadastro</span></>}
-                {clienteInfo.status === "divergente" && <>⚠️ <strong>{clienteInfo.nome}</strong><br/><span style={{ fontSize:11 }}>Endereço no CRM: {clienteInfo.enderecoCRM}</span><br/><span style={{ fontSize:11, color:"#fcd34d" }}>O endereço GPS pode não corresponder ao cadastro. Confirme se está no local correto.</span></>}
+                {clienteInfo.status === "ok" && <>✅ <strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 7px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/><span style={{ color:"#86efac", fontSize:11 }}>📍 Endereço confere com o cadastro</span></>}
+                {clienteInfo.status === "divergente" && <>⚠️ <strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 7px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/><span style={{ fontSize:11 }}>Endereço no CRM: {clienteInfo.enderecoCRM}</span><br/><span style={{ fontSize:11, color:"#fcd34d" }}>O endereço GPS pode não corresponder ao cadastro. Confirme se está no local correto.</span></>}
                 {clienteInfo.status === "nao_encontrado" && <>❌ Cliente não encontrado no CRM</>}
                 {clienteInfo.status === "erro_api" && <>⚡ Não foi possível consultar o CRM agora</>}
               </div>
