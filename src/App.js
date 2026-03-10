@@ -217,110 +217,140 @@ function LoginScreen({ onLogin }) {
 const EDGE_FUNCTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/functions/v1/buscar-cliente";
 
 function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
+  const [etapa, setEtapa] = useState(1); // 1 = código, 2 = loja + resumo
   const [codigo, setCodigo] = useState("");
   const [resumo, setResumo] = useState("");
   const [loja, setLoja] = useState("");
   const [erro, setErro] = useState("");
   const [validando, setValidando] = useState(false);
-  const [clienteInfo, setClienteInfo] = useState(null); // { nome, endereco, status }
+  const [clienteInfo, setClienteInfo] = useState(null);
 
-  const buscarCliente = async (cod) => {
-    if (!cod.trim()) { setClienteInfo(null); return; }
-    setValidando(true); setClienteInfo(null); setErro("");
+  const buscarCliente = async () => {
+    if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
+    setErro(""); setValidando(true); setClienteInfo(null);
     try {
-      const res = await fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(cod.trim())}`);
+      const res = await fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(codigo.trim())}`);
       let data: any = {};
       try { data = await res.json(); } catch { data = {}; }
 
-      if (res.status === 404 || !res.ok) {
+      if (res.status === 404 || !res.ok || !data.endereco) {
         setClienteInfo({ status: "nao_encontrado" });
         setValidando(false); return;
       }
 
-      if (!data.endereco) {
-        setClienteInfo({ status: "nao_encontrado" });
-        setValidando(false); return;
-      }
-
-      // Compare CRM address with GPS address
       const endCRM = data.endereco;
       const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
       const gpsTexto = normalize(gpsEndereco || "");
       const cidadeCRM = normalize(endCRM.cidade);
       const logradouroCRM = normalize(endCRM.logradouro);
       const primeiraPalavraRua = logradouroCRM.split(" ").filter((w: string) => w.length > 3)[0] || logradouroCRM.split(" ")[0];
-      const cidadeOk = gpsTexto.includes(cidadeCRM);
-      const ruaOk = gpsTexto.includes(primeiraPalavraRua);
-      const match = cidadeOk && ruaOk;
+      const match = gpsTexto.includes(cidadeCRM) && gpsTexto.includes(primeiraPalavraRua);
 
-      // Auto-select loja if returned from API
       if (data.loja) setLoja(data.loja);
-
       setClienteInfo({ status: match ? "ok" : "divergente", nome: data.nome, loja: data.loja, enderecoCRM: endCRM.enderecoCompleto, match });
-    } catch { setClienteInfo({ status: "erro_api" }); }
+      setEtapa(2);
+    } catch { setClienteInfo({ status: "erro_api" }); setEtapa(2); }
     setValidando(false);
   };
 
   const handleConfirm = () => {
     if (!loja) { setErro("Selecione a loja."); return; }
-    if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
     setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja });
   };
 
+  const statusColors: any = {
+    ok:            { bg:"rgba(34,197,94,.08)",   border:"rgba(34,197,94,.25)",   color:"#4ade80" },
+    divergente:    { bg:"rgba(251,146,60,.08)",  border:"rgba(251,146,60,.25)",  color:"#fb923c" },
+    nao_encontrado:{ bg:"rgba(239,68,68,.08)",   border:"rgba(239,68,68,.25)",   color:"#f87171" },
+    erro_api:      { bg:"rgba(100,116,139,.08)", border:"rgba(100,116,139,.25)", color:"#94a3b8" },
+  };
+  const sc = clienteInfo ? statusColors[clienteInfo.status] : null;
+
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20, overflowY:"auto" }}>
-      <div className="fade-in" style={{ ...S.card, background:"#0d1a2e", width:"100%", maxWidth:480, padding:28, borderRadius:18, margin:"auto" }}>
+      <div className="fade-in" style={{ ...S.card, background:"#0d1a2e", width:"100%", maxWidth:440, padding:28, borderRadius:18, margin:"auto" }}>
+
+        {/* Header */}
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
           <div style={{ width:40, height:40, borderRadius:12, background:"linear-gradient(135deg,#0ea5e9,#6366f1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>📋</div>
-          <div>
+          <div style={{ flex:1 }}>
             <div style={{ fontWeight:700, fontSize:15 }}>Detalhes da Visita</div>
-            <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>Preencha antes de registrar o check-in</div>
+            <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>{etapa === 1 ? "Informe o código do cliente" : "Confirme a loja e descreva a visita"}</div>
+          </div>
+          {/* Step indicator */}
+          <div style={{ display:"flex", gap:5 }}>
+            {[1,2].map(n => (
+              <div key={n} style={{ width:8, height:8, borderRadius:"50%", background: etapa >= n ? "#0ea5e9" : "#1e3050" }} />
+            ))}
           </div>
         </div>
-        <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-          <div>
-            <label style={S.label}>Loja</label>
-            <select style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080" }} value={loja} onChange={e=>setLoja(e.target.value)}>
-              <option value="" disabled>Selecione uma loja...</option>
-              {LOJAS.map(l=><option key={l} value={l}>{l}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={S.label}>Código do Cliente</label>
-            <div style={{ position:"relative" }}>
-              <input style={{ ...S.input, paddingRight:40 }} placeholder="Ex: 549" value={codigo}
-                onChange={e=>{ setCodigo(e.target.value); setClienteInfo(null); }}
-                onBlur={e=>buscarCliente(e.target.value)} />
-              {validando && <div style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", fontSize:12, color:"#4a6080" }}>🔍</div>}
+
+        {/* ETAPA 1 — Código do cliente */}
+        {etapa === 1 && (
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+            <div>
+              <label style={S.label}>Código do Cliente</label>
+              <input style={S.input} placeholder="Ex: 549" value={codigo} autoFocus
+                onChange={e=>{ setCodigo(e.target.value); setErro(""); }}
+                onKeyDown={e=>e.key==="Enter" && buscarCliente()} />
             </div>
+            {erro && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:9, padding:"9px 13px", color:"#f87171", fontSize:13 }}>⚠️ {erro}</div>}
+            <div style={{ display:"flex", gap:10, marginTop:4 }}>
+              <button className="hvr" style={{ ...S.btn("ghost"), flex:1, padding:13 }} onClick={onCancel} disabled={validando}>Cancelar</button>
+              <button className="hvr" style={{ ...S.btn("primary"), flex:2, padding:13 }} onClick={buscarCliente} disabled={validando}>
+                {validando ? "🔍 Buscando..." : "Buscar cliente →"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ETAPA 2 — Loja + Resumo */}
+        {etapa === 2 && (
+          <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
             {/* Client info card */}
-            {clienteInfo && (
-              <div style={{ marginTop:8, padding:"10px 14px", borderRadius:10, fontSize:12,
-                ...(clienteInfo.status === "ok"        ? { background:"rgba(34,197,94,.08)",  border:"1px solid rgba(34,197,94,.2)",  color:"#4ade80" } : {}),
-                ...(clienteInfo.status === "divergente"? { background:"rgba(251,146,60,.08)", border:"1px solid rgba(251,146,60,.2)", color:"#fb923c" } : {}),
-                ...(clienteInfo.status === "nao_encontrado" ? { background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)", color:"#f87171" } : {}),
-                ...(clienteInfo.status === "erro_api"  ? { background:"rgba(100,116,139,.08)",border:"1px solid rgba(100,116,139,.2)",color:"#94a3b8" } : {}),
-              }}>
-                {clienteInfo.status === "ok" && <>✅ <strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 7px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/><span style={{ color:"#86efac", fontSize:11 }}>📍 Endereço confere com o cadastro</span></>}
-                {clienteInfo.status === "divergente" && <>⚠️ <strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 7px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/><span style={{ fontSize:11 }}>Endereço no CRM: {clienteInfo.enderecoCRM}</span><br/><span style={{ fontSize:11, color:"#fcd34d" }}>O endereço GPS pode não corresponder ao cadastro. Confirme se está no local correto.</span></>}
-                {clienteInfo.status === "nao_encontrado" && <>❌ Cliente não encontrado no CRM</>}
-                {clienteInfo.status === "erro_api" && <>⚡ Não foi possível consultar o CRM agora</>}
+            {clienteInfo && sc && (
+              <div style={{ padding:"11px 14px", borderRadius:11, fontSize:13, background:sc.bg, border:`1px solid ${sc.border}`, color:sc.color }}>
+                {clienteInfo.status === "ok" && (
+                  <><strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 8px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/>
+                  <span style={{ fontSize:11, color:"#86efac" }}>📍 Endereço confere com o cadastro</span></>
+                )}
+                {clienteInfo.status === "divergente" && (
+                  <><strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 8px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/>
+                  <span style={{ fontSize:11 }}>📍 CRM: {clienteInfo.enderecoCRM}</span><br/>
+                  <span style={{ fontSize:11, color:"#fcd34d" }}>⚠️ Endereço pode não corresponder ao cadastro</span></>
+                )}
+                {clienteInfo.status === "nao_encontrado" && <>❌ Cliente não encontrado no CRM — verifique o código</>}
+                {clienteInfo.status === "erro_api" && <>⚡ CRM indisponível no momento</>}
               </div>
             )}
+
+            {/* Loja */}
+            <div>
+              <label style={S.label}>Loja</label>
+              <select style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080" }} value={loja} onChange={e=>setLoja(e.target.value)}>
+                <option value="" disabled>Selecione uma loja...</option>
+                {LOJAS.map(l=><option key={l} value={l}>{l}</option>)}
+              </select>
+            </div>
+
+            {/* Resumo */}
+            <div>
+              <label style={S.label}>Resumo da Visita</label>
+              <textarea style={S.textarea} placeholder="Descreva brevemente o que foi feito na visita..." value={resumo} onChange={e=>setResumo(e.target.value)} autoFocus />
+            </div>
+
+            {erro && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:9, padding:"9px 13px", color:"#f87171", fontSize:13 }}>⚠️ {erro}</div>}
+
+            <div style={{ display:"flex", gap:10, marginTop:4 }}>
+              <button className="hvr" style={{ ...S.btn("ghost"), flex:1, padding:13 }} onClick={()=>{ setEtapa(1); setErro(""); }} disabled={loading}>← Voltar</button>
+              <button className="hvr" style={{ ...S.btn("primary"), flex:2, padding:13 }} onClick={handleConfirm} disabled={loading}>
+                {loading ? "📡 Registrando..." : "✅ Confirmar Check-in"}
+              </button>
+            </div>
           </div>
-          <div>
-            <label style={S.label}>Resumo da Visita</label>
-            <textarea style={S.textarea} placeholder="Descreva brevemente o que foi feito na visita..." value={resumo} onChange={e=>setResumo(e.target.value)} />
-          </div>
-          {erro && <div style={{ ...S.tag("red"), padding:"9px 13px", borderRadius:9, fontSize:13 }}>⚠️ {erro}</div>}
-          <div style={{ display:"flex", gap:10, marginTop:4 }}>
-            <button className="hvr" style={{ ...S.btn("ghost"), flex:1, padding:13 }} onClick={onCancel} disabled={loading||validando}>Cancelar</button>
-            <button className="hvr" style={{ ...S.btn("primary"), flex:2, padding:13 }} onClick={handleConfirm} disabled={loading||validando}>
-              {loading ? "📡 Registrando..." : validando ? "🔍 Verificando..." : "✅ Confirmar Check-in"}
-            </button>
-          </div>
-        </div>
+        )}
+
       </div>
     </div>
   );
