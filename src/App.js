@@ -107,7 +107,7 @@ function MobileOnly({ onAdminLogin }) {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=Space+Mono:wght@700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
-        input:focus{border-color:#38bdf8!important;outline:none}
+        input:focus{border-color:#38bdf8!important;outline:none} .hvr-row:hover td{background:rgba(56,189,248,.04)!important}
         .hvr:hover{opacity:.85;transform:translateY(-1px)}
       `}</style>
 
@@ -256,7 +256,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
   const handleConfirm = () => {
     if (!loja) { setErro("Selecione a loja."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
-    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja });
+    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja, endereco_status: clienteInfo?.status ?? "nao_verificado" });
   };
 
   const statusColors: any = {
@@ -377,38 +377,93 @@ function MapView({ checkins }) {
 }
 
 // ─── HISTÓRICO ─────────────────────────────────────────────────────────────────
+function resumirEndereco(end) {
+  if (!end) return "-";
+  // Try to extract just street + number + city
+  const parts = end.split(",");
+  if (parts.length >= 2) {
+    const rua = parts[0].trim();
+    // Find city-like part (usually after the last dash or before CEP)
+    const cidade = end.match(/,\s*([^,]+?)\s*-\s*[A-Z]{2}/)?.[1]?.trim() || parts[parts.length-3]?.trim() || "";
+    return cidade ? `${rua} — ${cidade}` : rua;
+  }
+  return end.slice(0, 60) + (end.length > 60 ? "…" : "");
+}
+
+const ENDERECO_STATUS_STYLE: any = {
+  ok:             { color:"#4ade80", icon:"✅", title:"Endereço confere com o CRM" },
+  divergente:     { color:"#fb923c", icon:"⚠️", title:"Endereço diverge do CRM" },
+  nao_encontrado: { color:"#f87171", icon:"❌", title:"Cliente não encontrado no CRM" },
+  nao_verificado: { color:"#64748b", icon:"—",  title:"Não verificado" },
+  erro_api:       { color:"#94a3b8", icon:"⚡", title:"CRM indisponível na verificação" },
+};
+
 function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
   if (loading) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
   if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
+
+  const cols = isAdmin
+    ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", ""]
+    : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo"];
+
+  const thStyle: any = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
+  const tdStyle: any = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
+
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:10, maxHeight:420, overflowY:"auto" }}>
-      {checkins.map((c,i) => (
-        <div key={c.id} style={{ background:"#0a1628", border:"1px solid #1a2d4a", borderRadius:12, padding:"13px 16px" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:8, alignItems:"start" }}>
-            <div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:5 }}>
-                <div style={{ width:28, height:28, borderRadius:"50%", background:`hsl(${(c.usuario||"").charCodeAt(0)*7%360},55%,35%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:"#fff", flexShrink:0 }}>
-                  {(c.usuario||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
-                </div>
-                <span style={{ fontWeight:600, fontSize:14 }}>{c.usuario}</span>
-                {c.loja && <span style={{ ...S.tag("purple"), fontSize:11 }}>🏪 {c.loja}</span>}
-                {c.codigo_cliente && <span style={{ ...S.tag("orange"), fontSize:11 }}>🏷️ {c.codigo_cliente}</span>}
-              </div>
-              <div style={{ fontSize:12, color:"#38bdf8", marginBottom:4 }}>🕐 {formatDate(c.timestamp)}</div>
-              <div style={{ fontSize:12, color:"#8a9ab5", lineHeight:1.5, marginBottom: c.resumo_visita ? 6 : 0 }}>📍 {c.endereco}</div>
-              {c.resumo_visita && (
-                <div style={{ fontSize:12, color:"#94a3b8", background:"rgba(255,255,255,.04)", borderRadius:8, padding:"7px 10px", borderLeft:"2px solid #38bdf8", marginTop:4 }}>
-                  💬 {c.resumo_visita}
-                </div>
-              )}
-            </div>
-            <div style={{ display:"flex", flexDirection:"column", gap:6, alignItems:"flex-end" }}>
-              <span style={S.tag("blue")}>#{checkins.length-i}</span>
-              {isAdmin && <button style={{ ...S.btn("danger"), padding:"4px 10px", fontSize:11 }} onClick={()=>onDelete(c.id)}>✕</button>}
-            </div>
-          </div>
-        </div>
-      ))}
+    <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid #1a2d4a" }}>
+      <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isAdmin ? 800 : 600 }}>
+        <thead style={{ background:"#07101f" }}>
+          <tr>
+            {cols.map(c => <th key={c} style={thStyle}>{c}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {checkins.map((c, i) => {
+            const est = ENDERECO_STATUS_STYLE[c.endereco_status || "nao_verificado"];
+            const avatar = (c.usuario||"?").split(" ").map((n: string)=>n[0]).join("").slice(0,2).toUpperCase();
+            const avatarBg = `hsl(${(c.usuario||"").charCodeAt(0)*7%360},55%,35%)`;
+            return (
+              <tr key={c.id} style={{ background: i%2===0 ? "#0a1628" : "#07101f" }}
+                className="hvr-row">
+                <td style={{ ...tdStyle, color:"#4a6080", fontWeight:600, width:36 }}>{checkins.length-i}</td>
+                {isAdmin && (
+                  <td style={tdStyle}>
+                    <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+                      <div style={{ width:26, height:26, borderRadius:"50%", background:avatarBg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, color:"#fff", flexShrink:0 }}>{avatar}</div>
+                      <span style={{ fontWeight:600, whiteSpace:"nowrap" }}>{c.usuario}</span>
+                    </div>
+                  </td>
+                )}
+                <td style={{ ...tdStyle, whiteSpace:"nowrap", color:"#38bdf8" }}>{formatDate(c.timestamp)}</td>
+                <td style={tdStyle}>
+                  {c.loja ? <span style={{ ...S.tag("purple"), fontSize:11 }}>🏪 {c.loja}</span> : <span style={{ color:"#4a6080" }}>—</span>}
+                </td>
+                <td style={tdStyle}>
+                  {c.codigo_cliente ? <span style={{ ...S.tag("orange"), fontSize:11 }}>🏷️ {c.codigo_cliente}</span> : <span style={{ color:"#4a6080" }}>—</span>}
+                </td>
+                <td style={{ ...tdStyle, maxWidth:200 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                    <span title={est.title} style={{ fontSize:14, flexShrink:0, cursor:"default" }}>{est.icon}</span>
+                    <span style={{ color: est.color === "#4ade80" ? "#8a9ab5" : est.color, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={c.endereco}>
+                      {resumirEndereco(c.endereco)}
+                    </span>
+                  </div>
+                </td>
+                <td style={{ ...tdStyle, maxWidth:220 }}>
+                  {c.resumo_visita
+                    ? <span style={{ color:"#94a3b8", overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{c.resumo_visita}</span>
+                    : <span style={{ color:"#4a6080" }}>—</span>}
+                </td>
+                {isAdmin && (
+                  <td style={{ ...tdStyle, width:36 }}>
+                    <button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:11 }} onClick={()=>onDelete(c.id)}>✕</button>
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -560,7 +615,7 @@ export default function App() {
   };
 
   // Confirma o check-in com os dados do modal
-  const confirmarCheckIn = async ({ codigo_cliente, resumo_visita, loja }) => {
+  const confirmarCheckIn = async ({ codigo_cliente, resumo_visita, loja, endereco_status }) => {
     setLoading(true);
     // Verificar duplicata: mesmo endereço E mesmo código de cliente nos últimos 20min
     const vinte = new Date(Date.now() - 20*60*1000).toISOString();
@@ -580,7 +635,7 @@ export default function App() {
     try {
       const [inserted] = await api("/checkins", {
         method:"POST",
-        body: JSON.stringify({ usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita, loja })
+        body: JSON.stringify({ usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita, loja, endereco_status })
       });
       setCheckins(prev => [inserted, ...prev]);
       setShowModal(false); setPendingPos(null);
