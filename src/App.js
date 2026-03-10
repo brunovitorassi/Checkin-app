@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 
 const SUPABASE_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1amF0dnB1b3dnanhiZGJ2bndkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNjMyMjYsImV4cCI6MjA4ODYzOTIyNn0.vZFEuWkNwyQRmxUYMsqBHLoqYkJsNQRXRjvjdObKMbA";
@@ -228,8 +228,8 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
   const [gravando, setGravando] = useState(false);
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [erroAudio, setErroAudio] = useState("");
-  const mediaRecorderRef = React.useRef(null);
-  const chunksRef = React.useRef([]);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
 
   const iniciarGravacao = async () => {
     setErroAudio("");
