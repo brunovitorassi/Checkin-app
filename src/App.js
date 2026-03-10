@@ -379,15 +379,16 @@ function MapView({ checkins }) {
 // ─── HISTÓRICO ─────────────────────────────────────────────────────────────────
 function resumirEndereco(end) {
   if (!end) return "-";
-  // Try to extract just street + number + city
-  const parts = end.split(",");
-  if (parts.length >= 2) {
-    const rua = parts[0].trim();
-    // Find city-like part (usually after the last dash or before CEP)
-    const cidade = end.match(/,\s*([^,]+?)\s*-\s*[A-Z]{2}/)?.[1]?.trim() || parts[parts.length-3]?.trim() || "";
-    return cidade ? `${rua} — ${cidade}` : rua;
-  }
-  return end.slice(0, 60) + (end.length > 60 ? "…" : "");
+  // Nominatim format: "Street, Number, Neighbourhood, City, Region, State, CEP, Country"
+  const parts = end.split(",").map((p: string) => p.trim());
+  const rua = parts[0] || "";
+  const numero = parts[1] || "";
+  // City is usually 3rd or 4th from end (before state/region/CEP/country)
+  const cidade = parts.length >= 4
+    ? parts.find((p: string, i: number) => i >= 2 && i <= parts.length - 4 && p.length > 2 && !/^\d/.test(p) && !p.includes("Região")) || ""
+    : "";
+  const ruaNum = numero && /^\d/.test(numero) ? `${rua}, ${numero}` : rua;
+  return cidade ? `${ruaNum} — ${cidade}` : ruaNum || end.slice(0, 50);
 }
 
 const ENDERECO_STATUS_STYLE: any = {
@@ -441,13 +442,20 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
                 <td style={tdStyle}>
                   {c.codigo_cliente ? <span style={{ ...S.tag("orange"), fontSize:11 }}>🏷️ {c.codigo_cliente}</span> : <span style={{ color:"#4a6080" }}>—</span>}
                 </td>
-                <td style={{ ...tdStyle, maxWidth:200 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                    <span title={est.title} style={{ fontSize:14, flexShrink:0, cursor:"default" }}>{est.icon}</span>
-                    <span style={{ color: est.color === "#4ade80" ? "#8a9ab5" : est.color, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }} title={c.endereco}>
+                <td style={{ ...tdStyle, maxWidth:220 }}>
+                  <span title={`${est.title}\n${c.endereco}`} style={{
+                    display:"inline-flex", alignItems:"center", gap:5,
+                    background: `${est.color}18`,
+                    border: `1px solid ${est.color}40`,
+                    color: est.color === "#4ade80" ? "#86efac" : est.color,
+                    borderRadius:7, padding:"3px 9px", fontSize:11, fontWeight:500,
+                    maxWidth:"100%", overflow:"hidden", cursor:"default",
+                  }}>
+                    <span style={{ flexShrink:0 }}>{est.icon}</span>
+                    <span style={{ overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                       {resumirEndereco(c.endereco)}
                     </span>
-                  </div>
+                  </span>
                 </td>
                 <td style={{ ...tdStyle, maxWidth:220 }}>
                   {c.resumo_visita
