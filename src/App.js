@@ -214,20 +214,53 @@ function LoginScreen({ onLogin }) {
 }
 
 // ─── MODAL DE CHECK-IN ─────────────────────────────────────────────────────────
-function CheckInModal({ user, onConfirm, onCancel, loading }) {
+const EDGE_FUNCTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/functions/v1/buscar-cliente";
+
+function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
   const [codigo, setCodigo] = useState("");
   const [resumo, setResumo] = useState("");
   const [loja, setLoja] = useState("");
   const [erro, setErro] = useState("");
+  const [validando, setValidando] = useState(false);
+  const [clienteInfo, setClienteInfo] = useState(null); // { nome, endereco, status }
+
+  const buscarCliente = async (cod) => {
+    if (!cod.trim()) { setClienteInfo(null); return; }
+    setValidando(true); setClienteInfo(null); setErro("");
+    try {
+      const res = await fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(cod.trim())}`, {
+        headers: { "apikey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd1amF0dnB1b3dnanhiZGJ2bndkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNjMyMjYsImV4cCI6MjA4ODYzOTIyNn0.vZFEuWkNwyQRmxUYMsqBHLoqYkJsNQRXRjvjdObKMbA" }
+      });
+      const data = await res.json();
+      if (!res.ok || data.erro) {
+        setClienteInfo({ status: "nao_encontrado" });
+        setValidando(false); return;
+      }
+      // Compare CRM address with GPS address (city + street fuzzy match)
+      const endCRM = data.endereco;
+      const enderecoTexto = `${endCRM.logradouro} ${endCRM.numero} ${endCRM.bairro} ${endCRM.cidade}`.toLowerCase().replace(/\s+/g,' ');
+      const gpsTexto = (gpsEndereco || "").toLowerCase();
+      // Check if city matches
+      const cidadeOk = gpsTexto.includes(endCRM.cidade.toLowerCase());
+      // Check if street matches (first word of logradouro)
+      const primeiraRua = endCRM.logradouro.split(" ").slice(0,2).join(" ").toLowerCase();
+      const ruaOk = gpsTexto.includes(primeiraRua);
+      const match = cidadeOk && ruaOk;
+      setClienteInfo({ status: match ? "ok" : "divergente", nome: data.nome, enderecoCRM: endCRM.enderecoCompleto, match });
+    } catch { setClienteInfo({ status: "erro_api" }); }
+    setValidando(false);
+  };
+
   const handleConfirm = () => {
     if (!loja) { setErro("Selecione a loja."); return; }
     if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
     setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja });
   };
+
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20 }}>
-      <div className="fade-in" style={{ ...S.card, background:"#0d1a2e", width:"100%", maxWidth:460, padding:28, borderRadius:18 }}>
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20, overflowY:"auto" }}>
+      <div className="fade-in" style={{ ...S.card, background:"#0d1a2e", width:"100%", maxWidth:480, padding:28, borderRadius:18, margin:"auto" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
           <div style={{ width:40, height:40, borderRadius:12, background:"linear-gradient(135deg,#0ea5e9,#6366f1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>📋</div>
           <div>
@@ -245,7 +278,26 @@ function CheckInModal({ user, onConfirm, onCancel, loading }) {
           </div>
           <div>
             <label style={S.label}>Código do Cliente</label>
-            <input style={S.input} placeholder="Ex: CLI-0042" value={codigo} onChange={e=>setCodigo(e.target.value)} autoFocus />
+            <div style={{ position:"relative" }}>
+              <input style={{ ...S.input, paddingRight:40 }} placeholder="Ex: 549" value={codigo}
+                onChange={e=>{ setCodigo(e.target.value); setClienteInfo(null); }}
+                onBlur={e=>buscarCliente(e.target.value)} />
+              {validando && <div style={{ position:"absolute", right:12, top:"50%", transform:"translateY(-50%)", fontSize:12, color:"#4a6080" }}>🔍</div>}
+            </div>
+            {/* Client info card */}
+            {clienteInfo && (
+              <div style={{ marginTop:8, padding:"10px 14px", borderRadius:10, fontSize:12,
+                ...(clienteInfo.status === "ok"        ? { background:"rgba(34,197,94,.08)",  border:"1px solid rgba(34,197,94,.2)",  color:"#4ade80" } : {}),
+                ...(clienteInfo.status === "divergente"? { background:"rgba(251,146,60,.08)", border:"1px solid rgba(251,146,60,.2)", color:"#fb923c" } : {}),
+                ...(clienteInfo.status === "nao_encontrado" ? { background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)", color:"#f87171" } : {}),
+                ...(clienteInfo.status === "erro_api"  ? { background:"rgba(100,116,139,.08)",border:"1px solid rgba(100,116,139,.2)",color:"#94a3b8" } : {}),
+              }}>
+                {clienteInfo.status === "ok" && <>✅ <strong>{clienteInfo.nome}</strong><br/><span style={{ color:"#86efac", fontSize:11 }}>📍 Endereço confere com o cadastro</span></>}
+                {clienteInfo.status === "divergente" && <>⚠️ <strong>{clienteInfo.nome}</strong><br/><span style={{ fontSize:11 }}>Endereço no CRM: {clienteInfo.enderecoCRM}</span><br/><span style={{ fontSize:11, color:"#fcd34d" }}>O endereço GPS pode não corresponder ao cadastro. Confirme se está no local correto.</span></>}
+                {clienteInfo.status === "nao_encontrado" && <>❌ Cliente não encontrado no CRM</>}
+                {clienteInfo.status === "erro_api" && <>⚡ Não foi possível consultar o CRM agora</>}
+              </div>
+            )}
           </div>
           <div>
             <label style={S.label}>Resumo da Visita</label>
@@ -253,9 +305,9 @@ function CheckInModal({ user, onConfirm, onCancel, loading }) {
           </div>
           {erro && <div style={{ ...S.tag("red"), padding:"9px 13px", borderRadius:9, fontSize:13 }}>⚠️ {erro}</div>}
           <div style={{ display:"flex", gap:10, marginTop:4 }}>
-            <button className="hvr" style={{ ...S.btn("ghost"), flex:1, padding:13 }} onClick={onCancel} disabled={loading}>Cancelar</button>
-            <button className="hvr" style={{ ...S.btn("primary"), flex:2, padding:13 }} onClick={handleConfirm} disabled={loading}>
-              {loading ? "📡 Registrando..." : "✅ Confirmar Check-in"}
+            <button className="hvr" style={{ ...S.btn("ghost"), flex:1, padding:13 }} onClick={onCancel} disabled={loading||validando}>Cancelar</button>
+            <button className="hvr" style={{ ...S.btn("primary"), flex:2, padding:13 }} onClick={handleConfirm} disabled={loading||validando}>
+              {loading ? "📡 Registrando..." : validando ? "🔍 Verificando..." : "✅ Confirmar Check-in"}
             </button>
           </div>
         </div>
@@ -550,7 +602,7 @@ export default function App() {
         input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5)}
       `}</style>
 
-      {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} />}
+      {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} gpsEndereco={pendingPos?.endereco||""} />}
 
       {/* Header */}
       <div style={{ background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
