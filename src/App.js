@@ -345,7 +345,14 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
             {/* Resumo */}
             <div>
               <label style={S.label}>Resumo da Visita</label>
-              <textarea style={S.textarea} placeholder="Descreva brevemente o que foi feito na visita..." value={resumo} onChange={e=>setResumo(e.target.value)} autoFocus />
+              <div style={{ position:"relative" }}>
+                <textarea style={{ ...S.textarea, paddingBottom:22 }} placeholder="Descreva brevemente o que foi feito na visita..."
+                  value={resumo} maxLength={1000}
+                  onChange={e=>setResumo(e.target.value)} autoFocus />
+                <div style={{ position:"absolute", bottom:8, right:12, fontSize:10, color: resumo.length > 900 ? "#fb923c" : "#4a6080" }}>
+                  {resumo.length}/1000
+                </div>
+              </div>
             </div>
 
             {erro && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:9, padding:"9px 13px", color:"#f87171", fontSize:13 }}>⚠️ {erro}</div>}
@@ -649,9 +656,10 @@ export default function App() {
       setLoading(false); return;
     }
     try {
+      const resumo_visita_truncado = (resumo_visita || "").slice(0, 1000);
       const [inserted] = await api("/checkins", {
         method:"POST",
-        body: JSON.stringify({ usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita, loja, endereco_status })
+        body: JSON.stringify({ usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita: resumo_visita_truncado, loja, endereco_status })
       });
       setCheckins(prev => [inserted, ...prev]);
       setShowModal(false); setPendingPos(null);
@@ -660,6 +668,7 @@ export default function App() {
     } catch {
       setStatus({ type:"error", msg:"Erro ao salvar. Tente novamente." });
       setTimeout(()=>setStatus(null), 4000);
+      // Don't close modal on error so user can retry
     }
     setLoading(false);
   };
