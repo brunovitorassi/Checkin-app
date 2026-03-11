@@ -1012,30 +1012,52 @@ export default function App() {
     try {
       const resumo_visita_truncado = (resumo_visita || "").slice(0, 1000);
       const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita: resumo_visita_truncado, loja, endereco_status };
-      console.log("📤 Enviando check-in:", payload);
-      const result = await api("/checkins", {
-        method:"POST",
+
+      // Use fetch directly to have full control over the response
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/checkins`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation",
+        },
         body: JSON.stringify(payload)
       });
-      console.log("✅ Resposta Supabase:", result);
-      const inserted = Array.isArray(result) ? result[0] : result;
-      if (inserted) {
-        setCheckins(prev => [inserted, ...prev]);
-      } else {
-        // Even if no data returned, refresh from server
-        const fresh = await api("/checkins?order=timestamp.desc&limit=50");
-        setCheckins(fresh);
+
+      const text = await res.text();
+      console.log("✅ Status:", res.status, "Body:", text);
+
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}: ${text}`);
       }
-      setShowModal(false); setPendingPos(null);
+
+      // Close modal and show success FIRST, before any state updates
+      setShowModal(false);
+      setPendingPos(null);
+      setLoading(false);
       setStatus({ type:"success", msg:"✅ Check-in registrado com sucesso!" });
       setTimeout(()=>setStatus(null), 3500);
+
+      // Then update checkins list
+      try {
+        const inserted = text ? JSON.parse(text) : null;
+        const item = Array.isArray(inserted) ? inserted[0] : inserted;
+        if (item) {
+          setCheckins(prev => [item, ...prev]);
+        } else {
+          await fetchCheckins();
+        }
+      } catch { await fetchCheckins(); }
+      return;
+
     } catch(e) {
       console.error("❌ Erro check-in:", e);
       const msg = e?.message || String(e);
       const friendly = msg.includes("duplicate") ? "Check-in duplicado detectado."
         : msg.includes("violates") ? "Erro de validação no servidor."
         : msg.includes("JWT") || msg.includes("auth") ? "Erro de autenticação. Faça login novamente."
-        : "Erro ao salvar: " + msg.slice(0, 200);
+        : "Erro: " + msg.slice(0, 200);
       setStatus({ type:"error", msg:"⚠️ " + friendly });
       setTimeout(()=>setStatus(null), 8000);
     }
