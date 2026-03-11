@@ -1586,9 +1586,9 @@ export default function App() {
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
           <div style={{ textAlign:"center" }}><div style={{ fontFamily:"'Space Mono',monospace", fontSize:18, fontWeight:700, color:"#38bdf8" }}>{totalToday}</div><div style={{ fontSize:10, color:"#4a6080" }}>HOJE</div></div>
-          <div style={{ width:1, height:28, background:"#1a2d4a" }}/>
+          <div style={{ width:1, height:28, background:"#1a2d4a" }}></div>
           <div style={{ textAlign:"center" }}><div style={{ fontFamily:"'Space Mono',monospace", fontSize:18, fontWeight:700, color:"#a78bfa" }}>{checkins.length}</div><div style={{ fontSize:10, color:"#4a6080" }}>TOTAL</div></div>
-          <div style={{ width:1, height:28, background:"#1a2d4a" }}/>
+          <div style={{ width:1, height:28, background:"#1a2d4a" }}></div>
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <div style={{ textAlign:"right" }}>
               <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
@@ -1782,7 +1782,5 @@ export default function App() {
         )}
       </div>
     </div>
-  </div>
-  </div>
   );
 }
