@@ -330,7 +330,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
     erro_api:       { bg:"rgba(100,116,139,.08)", border:"rgba(100,116,139,.25)", color:"#94a3b8" },
     nao_verificado: { bg:"rgba(100,116,139,.06)", border:"rgba(100,116,139,.2)",  color:"#94a3b8" },
   };
-  const sc = clienteInfo ? statusColors[clienteInfo.status] : null;
+  const sc = clienteInfo ? (statusColors[clienteInfo.status] || statusColors["nao_verificado"]) : null;
 
   return (
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", backdropFilter:"blur(6px)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20, overflowY:"auto" }}>
@@ -623,7 +623,9 @@ function AdminUsers({ currentUser }) {
           <div><label style={S.label}>Senha</label><input style={S.input} placeholder="Senha inicial" value={form.senha} onChange={e=>setForm({...form,senha:e.target.value})} /></div>
           <div><label style={S.label}>Perfil</label>
             <select style={{ ...S.input, appearance:"none" }} value={form.role} onChange={e=>setForm({...form,role:e.target.value})}>
-              <option value="user">Usuário comum</option><option value="admin">Administrador</option>
+              <option value="user">Usuário comum</option>
+              <option value="gerente">Gerente</option>
+              <option value="admin">Administrador</option>
             </select>
           </div>
         </div>
@@ -1181,6 +1183,7 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
                 <th style={thStyle}>Cliente</th>
                 <th style={thStyle}>Observação</th>
                 <th style={thStyle}>Status</th>
+                {canDelete && <th style={thStyle}></th>}
               </tr>
             </thead>
             <tbody>
@@ -1193,6 +1196,14 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
                   </td>
                   <td style={{ ...tdStyle, maxWidth:280 }}>{f.observacao}</td>
                   <td style={tdStyle}>{statusBadge(f)}</td>
+                  {canDelete && (
+                    <td style={tdStyle}>
+                      <button onClick={()=>excluir(f.id)} title="Excluir"
+                        style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:6, color:"#f87171", fontSize:12, padding:"4px 9px", cursor:"pointer", fontFamily:"inherit" }}>
+                        🗑️
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
