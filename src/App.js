@@ -303,7 +303,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
       const endCRM = data.endereco;
       setClienteInfo({
         status: data.endereco_status || "nao_verificado",
-        nome: data.nome,
+        nome: data.nome || null,
         loja: data.loja,
         enderecoCRM: endCRM?.enderecoCompleto || "",
         distancia: data.distancia_metros,
@@ -316,7 +316,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
   const handleConfirm = () => {
     if (!loja) { setErro("Selecione a loja."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
-    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), resumo_visita: resumo.trim(), loja, endereco_status: clienteInfo?.status ?? "nao_verificado" });
+    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), nome_cliente: clienteInfo?.nome || null, resumo_visita: resumo.trim(), loja, endereco_status: clienteInfo?.status ?? "nao_verificado" });
   };
 
   const statusColors = {
@@ -376,7 +376,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
                   <span style={{ fontSize:11, color:"#86efac" }}>✅ Endereço confere com o cadastro</span></>
                 )}
                 {clienteInfo.status === "divergente" && (
-                  <><strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 8px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/>
+                  <><strong>{clienteInfo.nome || codigo}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 8px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/>
                   <span style={{ fontSize:11 }}>📍 CRM: {clienteInfo.enderecoCRM}</span><br/>
                   <span style={{ fontSize:11, color:"#fcd34d" }}>⚠️ Endereço pode não corresponder ao cadastro</span></>
                 )}
@@ -399,8 +399,12 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
                   <span style={{ marginLeft:6, fontSize:10, color:"#94a3b8" }}>✓ Selecionada manualmente</span>
                 )}
               </label>
-              <select style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080",
-                borderColor: !loja && clienteInfo ? "rgba(251,146,60,.5)" : undefined }} 
+              <select
+                disabled={!!(clienteInfo?.loja)}
+                style={{ ...S.input, appearance:"none", color: loja ? "#e2e8f0" : "#4a6080",
+                  borderColor: !loja && clienteInfo ? "rgba(251,146,60,.5)" : undefined,
+                  opacity: clienteInfo?.loja ? 0.7 : 1,
+                  cursor: clienteInfo?.loja ? "not-allowed" : "pointer" }}
                 value={loja} onChange={e=>setLoja(e.target.value)}>
                 <option value="" disabled>Selecione uma loja...</option>
                 {LOJAS.map(l=><option key={l} value={l}>{l}</option>)}
@@ -747,7 +751,7 @@ function FollowUpPopup({ followups, onConcluir, onFechar }) {
             <div key={f.id} style={{ background:"rgba(251,146,60,.05)", border:"1px solid rgba(251,146,60,.2)", borderRadius:12, padding:"14px 16px" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
                 <div>
-                  {f.codigo_cliente && <div style={{ fontSize:12, color:"#fb923c", fontWeight:600, marginBottom:4 }}>🏷️ Cliente {f.codigo_cliente}</div>}
+                  {f.codigo_cliente && <div style={{ fontSize:12, color:"#fb923c", fontWeight:600, marginBottom:4 }}>🏷️ {f.codigo_cliente}{f.nome_cliente ? ` — ${f.nome_cliente}` : ""}</div>}
                   <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.5 }}>{f.observacao}</div>
                   <div style={{ fontSize:11, color:"#4a6080", marginTop:4 }}>
                     📅 {new Date(f.data_followup + "T12:00:00").toLocaleDateString("pt-BR")} · {f.usuario}
@@ -1047,6 +1051,125 @@ function ClienteSearch() {
   );
 }
 
+
+// ─── FOLLOW UPS TAB ───────────────────────────────────────────────────────────
+function FollowUpsTab({ user, isAdmin }) {
+  const [followups, setFollowups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filtroStatus, setFiltroStatus] = useState("pendentes");
+  const [filtroDe, setFiltroDe] = useState("");
+  const [filtroAte, setFiltroAte] = useState("");
+
+  const fetchFollowups = async () => {
+    setLoading(true);
+    try {
+      let path = isAdmin
+        ? `/followups?order=data_followup.asc`
+        : `/followups?usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
+      const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+      });
+      if (res.ok) setFollowups(await res.json());
+    } catch {}
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchFollowups(); }, []);
+
+  const concluir = async (id) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/followups?id=eq.${id}`, {
+      method: "PATCH",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ concluido: true })
+    });
+    setFollowups(prev => prev.map(f => f.id === id ? { ...f, concluido: true } : f));
+  };
+
+  const hoje = new Date().toISOString().split("T")[0];
+
+  const filtered = followups.filter(f => {
+    if (filtroStatus === "pendentes" && f.concluido) return false;
+    if (filtroStatus === "concluidos" && !f.concluido) return false;
+    if (filtroDe && f.data_followup < filtroDe) return false;
+    if (filtroAte && f.data_followup > filtroAte) return false;
+    return true;
+  });
+
+  const labelStyle = { fontSize:11, fontWeight:700, color:"#4a6080", letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:6 };
+
+  return (
+    <div className="fade-in">
+      {/* Filters */}
+      <div style={{ ...S.card, padding:14, marginBottom:16, display:"flex", flexWrap:"wrap", gap:10, alignItems:"flex-end" }}>
+        <div style={{ flex:"1 1 130px" }}>
+          <label style={labelStyle}>Status</label>
+          <select style={{ ...S.input, appearance:"none" }} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
+            <option value="todos">Todos</option>
+            <option value="pendentes">Pendentes</option>
+            <option value="concluidos">Concluídos</option>
+          </select>
+        </div>
+        <div style={{ flex:"1 1 120px" }}>
+          <label style={labelStyle}>De</label>
+          <input type="date" style={S.input} value={filtroDe} onChange={e=>setFiltroDe(e.target.value)} />
+        </div>
+        <div style={{ flex:"1 1 120px" }}>
+          <label style={labelStyle}>Até</label>
+          <input type="date" style={S.input} value={filtroAte} onChange={e=>setFiltroAte(e.target.value)} />
+        </div>
+        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); }} style={{ padding:"8px 14px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:8, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Limpar</button>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign:"center", padding:40, color:"#4a6080" }}>Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign:"center", padding:40, color:"#4a6080" }}>
+          <div style={{ fontSize:32, marginBottom:10 }}>🔔</div>
+          <div>Nenhum follow up encontrado</div>
+        </div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+          {filtered.map(f => {
+            const vencido = !f.concluido && f.data_followup < hoje;
+            const isHoje = !f.concluido && f.data_followup === hoje;
+            const borderColor = f.concluido ? "rgba(34,197,94,.2)" : vencido ? "rgba(239,68,68,.3)" : isHoje ? "rgba(251,146,60,.3)" : "#1a2d4a";
+            const bgColor = f.concluido ? "rgba(34,197,94,.04)" : vencido ? "rgba(239,68,68,.04)" : isHoje ? "rgba(251,146,60,.04)" : "rgba(255,255,255,.02)";
+            return (
+              <div key={f.id} style={{ background:bgColor, border:`1px solid ${borderColor}`, borderRadius:12, padding:"14px 16px" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10, marginBottom:8 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap", marginBottom:6 }}>
+                      {f.codigo_cliente && (
+                        <span style={{ fontSize:12, fontWeight:700, color: f.concluido ? "#4ade80" : vencido ? "#f87171" : isHoje ? "#fb923c" : "#38bdf8" }}>
+                          🏷️ {f.codigo_cliente}{f.nome_cliente ? ` — ${f.nome_cliente}` : ""}
+                        </span>
+                      )}
+                      {f.concluido && <span style={{ fontSize:10, background:"rgba(34,197,94,.15)", color:"#4ade80", padding:"2px 7px", borderRadius:5 }}>✅ Concluído</span>}
+                      {vencido && <span style={{ fontSize:10, background:"rgba(239,68,68,.15)", color:"#f87171", padding:"2px 7px", borderRadius:5 }}>⚠️ Atrasado</span>}
+                      {isHoje && <span style={{ fontSize:10, background:"rgba(251,146,60,.15)", color:"#fb923c", padding:"2px 7px", borderRadius:5 }}>🔔 Hoje</span>}
+                    </div>
+                    <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.5, marginBottom:6 }}>{f.observacao}</div>
+                    <div style={{ fontSize:11, color:"#4a6080" }}>
+                      📅 {new Date(f.data_followup + "T12:00:00").toLocaleDateString("pt-BR")}
+                      {isAdmin && f.usuario && <> · 👤 {f.usuario}</>}
+                    </div>
+                  </div>
+                </div>
+                {!f.concluido && (
+                  <button onClick={()=>concluir(f.id)}
+                    style={{ width:"100%", padding:"8px 12px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.2)", borderRadius:8, color:"#4ade80", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
+                    ✅ Marcar como concluído
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(() => {
     try {
@@ -1161,7 +1284,7 @@ export default function App() {
   };
 
   // Confirma o check-in com os dados do modal
-  const confirmarCheckIn = async ({ codigo_cliente, resumo_visita, loja, endereco_status }) => {
+  const confirmarCheckIn = async ({ codigo_cliente, nome_cliente, resumo_visita, loja, endereco_status }) => {
     setLoading(true);
     // Guard: pendingPos must exist
     if (!pendingPos) {
@@ -1186,7 +1309,7 @@ export default function App() {
     }
     try {
       const resumo_visita_truncado = (resumo_visita || "").slice(0, 1000);
-      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita: resumo_visita_truncado, loja, endereco_status };
+      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, nome_cliente, resumo_visita: resumo_visita_truncado, loja, endereco_status };
 
       // Use fetch directly to have full control over the response
       const res = await fetch(`${SUPABASE_URL}/rest/v1/checkins`, {
@@ -1220,14 +1343,14 @@ export default function App() {
         const item = Array.isArray(inserted) ? inserted[0] : inserted;
         if (item) {
           setCheckins(prev => [item, ...prev]);
-          setLastCheckin(item);
+          setLastCheckin({ ...item, nome_cliente: item.nome_cliente || nome_cliente });
         } else {
           await fetchCheckins();
-          setLastCheckin({ codigo_cliente, loja });
+          setLastCheckin({ codigo_cliente, nome_cliente, loja });
         }
       } catch {
         await fetchCheckins();
-        setLastCheckin({ codigo_cliente, loja });
+        setLastCheckin({ codigo_cliente, nome_cliente, loja });
       }
       // Show follow up modal after short delay
       setTimeout(() => setShowFollowUp(true), 600);
@@ -1268,11 +1391,12 @@ export default function App() {
 
   const tabs = [
     ...(!isAdmin ? [{ id:"checkin", label:"Check-in", icon:"✅" }] : []),
-    { id:"historico", label:"Histórico", icon:"📋" },
-    { id:"clientes",  label:"Clientes",  icon:"🔍" },
+    { id:"historico",  label:"Histórico",  icon:"📋" },
+    { id:"clientes",   label:"Clientes",   icon:"🔍" },
+    { id:"followups",  label:"Follow Ups", icon:"🔔" },
     ...(isAdmin ? [
-      { id:"mapa",     label:"Mapa",     icon:"🗺️" },
-      { id:"usuarios", label:"Usuários", icon:"👥" },
+      { id:"mapa",     label:"Mapa",       icon:"🗺️" },
+      { id:"usuarios", label:"Usuários",   icon:"👥" },
     ] : []),
   ];
   useEffect(() => { if (isAdmin && tab === "checkin") setTab("historico"); }, [isAdmin]);
@@ -1365,15 +1489,19 @@ export default function App() {
             )}
             {checkins.length>0 && (
               <div style={{ marginTop:28 }}>
-                <div style={{ ...S.label, marginBottom:10 }}>Seu último check-in</div>
-                <div style={{ background:"#0a1628", border:"1px solid #1a2d4a", borderRadius:12, padding:14 }}>
-                  <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                    <div style={{ fontSize:12, color:"#38bdf8" }}>{formatDate(checkins[0].timestamp)}</div>
-                    {checkins[0].loja && <span style={S.tag("purple")}>🏪 {checkins[0].loja}</span>}
-                    {checkins[0].codigo_cliente && <span style={S.tag("orange")}>🏷️ {checkins[0].codigo_cliente}</span>}
-                  </div>
-                  <div style={{ fontSize:12, color:"#8a9ab5", lineHeight:1.5 }}>📍 {checkins[0].endereco}</div>
-                  {checkins[0].resumo_visita && <div style={{ fontSize:12, color:"#94a3b8", marginTop:6, background:"rgba(255,255,255,.04)", borderRadius:7, padding:"6px 10px", borderLeft:"2px solid #38bdf8" }}>💬 {checkins[0].resumo_visita}</div>}
+                <div style={{ ...S.label, marginBottom:10 }}>Últimos check-ins</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {checkins.slice(0,5).map(c => (
+                    <div key={c.id} style={{ background:"#0a1628", border:"1px solid #1a2d4a", borderRadius:12, padding:"11px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:11, color:"#38bdf8", marginBottom:4 }}>{formatDate(c.timestamp)}</div>
+                        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                          {c.loja && <span style={S.tag("purple")}>🏪 {c.loja}</span>}
+                          {c.codigo_cliente && <span style={S.tag("orange")}>🏷️ {c.codigo_cliente}{c.nome_cliente ? ` · ${c.nome_cliente}` : ""}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -1495,6 +1623,11 @@ export default function App() {
         {/* CLIENTES */}
         {tab==="clientes" && (
           <div className="fade-in"><ClienteSearch /></div>
+        )}
+
+        {/* FOLLOW UPS */}
+        {tab==="followups" && (
+          <div className="fade-in"><FollowUpsTab user={user} isAdmin={isAdmin} /></div>
         )}
       </div>
     </div>
