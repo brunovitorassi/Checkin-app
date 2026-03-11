@@ -765,18 +765,20 @@ function ClienteSearch() {
             {abaCliente === "cadastro" && (
               <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
                 {[
-                  ["👤 Nome", cliente.nome],
-                  ["🪪 CPF/CNPJ", cliente.endereco ? undefined : null, cliente.cpfcnpj || cliente.cpfCnpj],
-                  ["📍 Endereço", cliente.endereco?.enderecoCompleto],
-                  ["📞 Telefone", cliente.telefone || cliente.celular ? `${cliente.telefone || ""}${cliente.telefone && cliente.celular ? " / " : ""}${cliente.celular || ""}` : null],
-                  ["📧 E-mail", cliente.email || null],
-                  ["🏷️ Segmento", cliente.segmento],
-                  ["💳 Forma de Pagamento", cliente.formaPagamento?.nome],
-                  ["📅 Condição de Pagamento", cliente.condicaoPagamento?.nome],
-                  ["👔 Vendedor", cliente.vendedor?.nome],
-                  ["🗓️ Última Compra", cliente.ultimaCompra ? new Date(cliente.ultimaCompra).toLocaleDateString("pt-BR") : null],
-                ].map(([label, val, alt]) => {
-                  const value = val !== undefined ? val : alt;
+                  ["👤 Nome",               cliente.nome],
+                  ["🪪 CPF/CNPJ",           cliente.cpfCnpj],
+                  ["📍 Endereço",            cliente.endereco?.enderecoCompleto],
+                  ["📞 Telefone",            [cliente.telefone, cliente.celular].filter(Boolean).join(" / ") || null],
+                  ["📧 E-mail",              cliente.email],
+                  ["🏷️ Segmento",            cliente.segmento],
+                  ["📊 Tabela de Venda",     cliente.tabelaVenda],
+                  ["💳 Forma de Pagamento",  cliente.formaPagamento],
+                  ["📅 Condição de Pagamento", cliente.condicaoPagamento],
+                  ["👔 Vendedor",            cliente.vendedor],
+                  ["🗺️ Rota",               cliente.rota],
+                  ["🗓️ Última Compra",       cliente.ultimaCompra ? new Date(cliente.ultimaCompra).toLocaleDateString("pt-BR") : null],
+                ].map(([label, val]) => {
+                  const value = val;
                   if (!value) return null;
                   return (
                     <div key={label} style={{ display:"flex", gap:10, alignItems:"flex-start", paddingBottom:12, borderBottom:"1px solid #0f1e33" }}>
@@ -978,6 +980,12 @@ export default function App() {
   // Confirma o check-in com os dados do modal
   const confirmarCheckIn = async ({ codigo_cliente, resumo_visita, loja, endereco_status }) => {
     setLoading(true);
+    // Guard: pendingPos must exist
+    if (!pendingPos) {
+      setStatus({ type:"error", msg:"⚠️ Posição GPS perdida. Feche e tente novamente." });
+      setTimeout(()=>setStatus(null), 5000);
+      setShowModal(false); setLoading(false); return;
+    }
     // Verificar duplicata: mesmo endereço E mesmo código de cliente nos últimos 20min
     const vinte = new Date(Date.now() - 20*60*1000).toISOString();
     const duplicata = checkins.find(c =>
@@ -1003,9 +1011,14 @@ export default function App() {
       setShowModal(false); setPendingPos(null);
       setStatus({ type:"success", msg:"Check-in registrado com sucesso!" });
       setTimeout(()=>setStatus(null), 3500);
-    } catch {
-      setStatus({ type:"error", msg:"Erro ao salvar. Tente novamente." });
-      setTimeout(()=>setStatus(null), 4000);
+    } catch(e) {
+      const msg = e?.message || String(e);
+      // If it's a duplicate key or RLS error, show specific message
+      const friendly = msg.includes("duplicate") ? "Check-in duplicado detectado."
+        : msg.includes("violates") ? "Erro de validação no servidor."
+        : "Erro ao salvar: " + msg.slice(0,120);
+      setStatus({ type:"error", msg:"⚠️ " + friendly });
+      setTimeout(()=>setStatus(null), 6000);
       // Don't close modal on error so user can retry
     }
     setLoading(false);
