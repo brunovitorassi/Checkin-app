@@ -91,7 +91,7 @@ function MobileOnly({ onAdminLogin }) {
     try {
       const data = await api(`/app_users?email=eq.${encodeURIComponent(email)}&senha=eq.${encodeURIComponent(senha)}&select=id,nome,email,role`);
       if (!data.length) { setErro("E-mail ou senha incorretos."); setLoading(false); return; }
-      if (data[0].role !== "admin") { setErro("Acesso restrito a administradores."); setLoading(false); return; }
+      if (data[0].role !== "admin" && data[0].role !== "gerente") { setErro("Acesso restrito a administradores e gerentes."); setLoading(false); return; }
       onAdminLogin(data[0]);
     } catch { setErro("Erro de conexão. Tente novamente."); }
     setLoading(false);
@@ -225,11 +225,14 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
   const [erro, setErro] = useState("");
   const [validando, setValidando] = useState(false);
   const [clienteInfo, setClienteInfo] = useState(null);
+  const [motivos, setMotivos] = useState([]);
   const [gravando, setGravando] = useState(false);
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [erroAudio, setErroAudio] = useState("");
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+
+  const toggleMotivo = (m) => setMotivos(prev => prev.includes(m) ? prev.filter(x=>x!==m) : [...prev, m]);
 
   const iniciarGravacao = async () => {
     setErroAudio("");
@@ -315,8 +318,9 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 
   const handleConfirm = () => {
     if (!loja) { setErro("Selecione a loja."); return; }
+    if (motivos.length === 0) { setErro("Selecione ao menos um motivo da visita."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
-    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), nome_cliente: clienteInfo?.nome || null, resumo_visita: resumo.trim(), loja, endereco_status: clienteInfo?.status ?? "nao_verificado" });
+    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), nome_cliente: clienteInfo?.nome || null, resumo_visita: resumo.trim(), motivos_visita: motivos.join(", "), loja, endereco_status: clienteInfo?.status ?? "nao_verificado" });
   };
 
   const statusColors = {
@@ -409,6 +413,25 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
                 <option value="" disabled>Selecione uma loja...</option>
                 {LOJAS.map(l=><option key={l} value={l}>{l}</option>)}
               </select>
+            </div>
+
+            {/* Motivo da Visita */}
+            <div>
+              <label style={S.label}>Motivo da Visita</label>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                {MOTIVOS_VISITA.map(m => {
+                  const sel = motivos.includes(m);
+                  return (
+                    <button key={m} onClick={()=>toggleMotivo(m)}
+                      style={{ padding:"7px 13px", borderRadius:20, fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", transition:"all .15s",
+                        background: sel ? "rgba(14,165,233,.2)" : "rgba(255,255,255,.04)",
+                        border: sel ? "1px solid rgba(14,165,233,.5)" : "1px solid #1e3050",
+                        color: sel ? "#38bdf8" : "#64748b" }}>
+                      {sel ? "✓ " : ""}{m}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Resumo */}
@@ -623,7 +646,7 @@ function AdminUsers({ currentUser }) {
                   </div>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <span style={S.tag(u.role==="admin"?"purple":"blue")}>{u.role==="admin"?"👑 Admin":"👤 Usuário"}</span>
+                  <span style={S.tag(u.role==="admin"?"purple":u.role==="gerente"?"orange":"blue")}>{u.role==="admin"?"👑 Admin":u.role==="gerente"?"🏢 Gerente":"👤 Usuário"}</span>
                   {u.id!==currentUser.id && <button style={{ ...S.btn("danger"), padding:"5px 11px", fontSize:12 }} onClick={()=>deleteUser(u.id)}>Excluir</button>}
                 </div>
               </div>
@@ -1053,7 +1076,7 @@ function ClienteSearch() {
 
 
 // ─── FOLLOW UPS TAB ───────────────────────────────────────────────────────────
-function FollowUpsTab({ user, isAdmin }) {
+function FollowUpsTab({ user, isAdmin, canDelete }) {
   const [followups, setFollowups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState("pendentes");
@@ -1118,27 +1141,25 @@ function FollowUpsTab({ user, isAdmin }) {
   return (
     <div className="fade-in">
       {/* Filters */}
-      <div style={{ ...S.card, padding:"12px 14px", marginBottom:16 }}>
-        <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"flex-end" }}>
-          <div style={{ flex:"1 1 100px", minWidth:90 }}>
-            <label style={labelStyle}>Status</label>
-            <select style={{ ...S.input, appearance:"none", padding:"8px 10px", fontSize:12 }} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
-              <option value="todos">Todos</option>
-              <option value="pendentes">Pendentes</option>
-              <option value="concluidos">Concluídos</option>
-            </select>
-          </div>
-          <div style={{ flex:"1 1 90px", minWidth:80 }}>
-            <label style={labelStyle}>De</label>
-            <input type="date" style={{ ...S.input, padding:"8px 10px", fontSize:12 }} value={filtroDe} onChange={e=>setFiltroDe(e.target.value)} />
-          </div>
-          <div style={{ flex:"1 1 90px", minWidth:80 }}>
-            <label style={labelStyle}>Até</label>
-            <input type="date" style={{ ...S.input, padding:"8px 10px", fontSize:12 }} value={filtroAte} onChange={e=>setFiltroAte(e.target.value)} />
-          </div>
-          <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); }}
-            style={{ padding:"8px 12px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:8, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>Limpar</button>
+      <div style={{ ...S.card, padding:16, marginBottom:18, display:"flex", flexWrap:"wrap", gap:12, alignItems:"flex-end" }}>
+        <div style={{ flex:"1 1 120px" }}>
+          <label style={labelStyle}>Status</label>
+          <select style={{ ...S.input, appearance:"none" }} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
+            <option value="todos">Todos</option>
+            <option value="pendentes">Pendentes</option>
+            <option value="concluidos">Concluídos</option>
+          </select>
         </div>
+        <div style={{ flex:"1 1 120px" }}>
+          <label style={labelStyle}>De</label>
+          <input type="date" style={S.input} value={filtroDe} onChange={e=>setFiltroDe(e.target.value)} />
+        </div>
+        <div style={{ flex:"1 1 120px" }}>
+          <label style={labelStyle}>Até</label>
+          <input type="date" style={S.input} value={filtroAte} onChange={e=>setFiltroAte(e.target.value)} />
+        </div>
+        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); }}
+          style={{ padding:"9px 16px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:9, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Limpar</button>
       </div>
 
       {loading ? (
@@ -1218,7 +1239,7 @@ export default function App() {
     try {
       const stored = JSON.parse(localStorage.getItem("checkpoint_user"));
       // On desktop, only restore session if user is admin
-      if (stored && !isMobile() && stored.role !== "admin") {
+      if (stored && !isMobile() && stored.role !== "admin" && stored.role !== "gerente") {
         localStorage.removeItem("checkpoint_user");
         return null;
       }
@@ -1249,6 +1270,8 @@ export default function App() {
   const [followupPopup, setFollowupPopup] = useState([]);
 
   const isAdmin = user?.role === "admin";
+  const isGerente = user?.role === "gerente";
+  const isDashboard = isAdmin || isGerente; // can access desktop dashboard
 
   const handleLogin = (u) => { localStorage.setItem("checkpoint_user", JSON.stringify(u)); setUser(u); };
   const handleLogout = () => {
@@ -1280,7 +1303,7 @@ export default function App() {
 
   // Check for due follow ups on load (users only, not admin)
   useEffect(() => {
-    if (!user || isAdmin) return;
+    if (!user || isDashboard) return;
     const checkFollowUps = async () => {
       try {
         const hoje = new Date().toISOString().split("T")[0];
@@ -1325,7 +1348,7 @@ export default function App() {
   };
 
   // Confirma o check-in com os dados do modal
-  const confirmarCheckIn = async ({ codigo_cliente, nome_cliente, resumo_visita, loja, endereco_status }) => {
+  const confirmarCheckIn = async ({ codigo_cliente, nome_cliente, resumo_visita, motivos_visita, loja, endereco_status }) => {
     setLoading(true);
     // Guard: pendingPos must exist
     if (!pendingPos) {
@@ -1350,7 +1373,7 @@ export default function App() {
     }
     try {
       const resumo_visita_truncado = (resumo_visita || "").slice(0, 1000);
-      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, nome_cliente, resumo_visita: resumo_visita_truncado, loja, endereco_status };
+      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, nome_cliente, motivos_visita, resumo_visita: resumo_visita_truncado, loja, endereco_status };
 
       // Use fetch directly to have full control over the response
       const res = await fetch(`${SUPABASE_URL}/rest/v1/checkins`, {
@@ -1431,19 +1454,17 @@ export default function App() {
   const totalToday = checkins.filter(c=>new Date(c.timestamp).toDateString()===new Date().toDateString()).length;
 
   const tabs = [
-    ...(!isAdmin ? [{ id:"checkin", label:"Check-in", icon:"✅" }] : []),
+    ...(!isDashboard ? [{ id:"checkin", label:"Check-in", icon:"✅" }] : []),
     { id:"historico",  label:"Histórico",  icon:"📋" },
     { id:"clientes",   label:"Clientes",   icon:"🔍" },
     { id:"followups",  label:"Follow Ups", icon:"🔔" },
-    ...(isAdmin ? [
-      { id:"mapa",     label:"Mapa",       icon:"🗺️" },
-      { id:"usuarios", label:"Usuários",   icon:"👥" },
-    ] : []),
+    ...(isDashboard ? [{ id:"mapa", label:"Mapa", icon:"🗺️" }] : []),
+    ...(isAdmin ? [{ id:"usuarios", label:"Usuários", icon:"👥" }] : []),
   ];
-  useEffect(() => { if (isAdmin && tab === "checkin") setTab("historico"); }, [isAdmin]);
+  useEffect(() => { if (isDashboard && tab === "checkin") setTab("historico"); }, [isDashboard]);
 
   const isMob = isMobile();
-  if (!isMob && user?.role !== "admin") return <MobileOnly onAdminLogin={handleLogin} />;
+  if (!isMob && !isDashboard) return <MobileOnly onAdminLogin={handleLogin} />;
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
   return (
@@ -1482,7 +1503,7 @@ export default function App() {
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <div style={{ textAlign:"right" }}>
               <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
-              <span style={S.tag(isAdmin?"purple":"blue")}>{isAdmin?"👑 Admin":"👤 Usuário"}</span>
+              <span style={S.tag(isAdmin?"purple":isGerente?"orange":"blue")}>{isAdmin?"👑 Admin":isGerente?"🏢 Gerente":"👤 Usuário"}</span>
             </div>
             <button className="hvr" style={{ ...S.btn("ghost"), padding:"7px 12px", fontSize:12 }} onClick={handleLogout}>Sair</button>
           </div>
@@ -1618,7 +1639,7 @@ export default function App() {
         )}
 
         {/* MAPA — reflete filtros */}
-        {tab==="mapa" && isAdmin && (
+        {tab==="mapa" && isDashboard && (
           <div className="fade-in">
             <div style={{ ...S.card, padding:14, marginBottom:16, display:"flex", flexWrap:"wrap", gap:12, alignItems:"flex-end" }}>
               <div style={{ flex:"1 1 140px" }}>
@@ -1668,7 +1689,7 @@ export default function App() {
 
         {/* FOLLOW UPS */}
         {tab==="followups" && (
-          <div className="fade-in"><FollowUpsTab user={user} isAdmin={isAdmin} /></div>
+          <div className="fade-in"><FollowUpsTab user={user} isAdmin={isDashboard} canDelete={isAdmin} /></div>
         )}
       </div>
     </div>
