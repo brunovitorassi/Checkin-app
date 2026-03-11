@@ -1085,6 +1085,7 @@ function ClienteSearch() {
                     || null;
                   const fields = [
                     ["👤 Nome",                  cliente.nome,          false],
+                    ["🔢 Código",                cliente.clienteId ? String(cliente.clienteId) : null, false],
                     ["🪪 CPF/CNPJ",              cliente.cpfCnpj,       false],
                     ["📍 Endereço",              cliente.endereco?.enderecoCompleto, false],
                     ["📞 Telefone",              [cliente.telefone, cliente.celular].filter(Boolean).join(" / ") || null, false],
