@@ -470,7 +470,6 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 
       </div>
     </div>
-  </div>
   );
 }
 
@@ -478,7 +477,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 function MapView({ checkins }) {
   if (!checkins.length) return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", flexDirection:"column", gap:8 }}>
-      <span style={{ fontSize:36 }}>📍</span><p style={{ color:"#8a9ab5", fontSize:13 }}>Nenhum check-in para exibir</p>
+      <><span style={{ fontSize:36 }}>📍</span><p style={{ color:"#8a9ab5", fontSize:13 }}>Nenhum check-in para exibir</p></>
     </div>
   );
   const lats=checkins.map(c=>c.lat), lngs=checkins.map(c=>c.lng);
