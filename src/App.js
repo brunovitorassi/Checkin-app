@@ -475,19 +475,75 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 
 // ─── MAPA ──────────────────────────────────────────────────────────────────────
 function MapView({ checkins }) {
-  if (!checkins.length) return (
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    // Load Leaflet CSS
+    if (!document.getElementById("leaflet-css")) {
+      const link = document.createElement("link");
+      link.id = "leaflet-css";
+      link.rel = "stylesheet";
+      link.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+      document.head.appendChild(link);
+    }
+    // Load Leaflet JS
+    const initMap = () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      const L = window.L;
+      if (!L || !mapRef.current) return;
+      const validCheckins = checkins.filter(c => c.lat && c.lng);
+      if (!validCheckins.length) return;
+      const map = L.map(mapRef.current, { zoomControl:true });
+      mapInstanceRef.current = map;
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:"© OpenStreetMap contributors"
+      }).addTo(map);
+      const bounds = [];
+      validCheckins.forEach(c => {
+        const marker = L.circleMarker([c.lat, c.lng], {
+          radius:9, fillColor:"#38bdf8", color:"#0ea5e9", weight:2,
+          opacity:1, fillOpacity:0.85
+        }).addTo(map);
+        marker.bindPopup(`<b>${c.usuario}</b><br/>${c.nome_cliente||c.codigo_cliente||""}<br/>${c.loja||""}<br/><small>${new Date(c.timestamp).toLocaleString("pt-BR")}</small>`);
+        bounds.push([c.lat, c.lng]);
+      });
+      if (bounds.length === 1) {
+        map.setView(bounds[0], 15);
+      } else {
+        map.fitBounds(bounds, { padding:[30,30] });
+      }
+    };
+    if (window.L) {
+      initMap();
+    } else {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+      script.onload = initMap;
+      document.head.appendChild(script);
+    }
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [checkins]);
+
+  if (!checkins.filter(c=>c.lat&&c.lng).length) return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100%", flexDirection:"column", gap:8 }}>
       <><span style={{ fontSize:36 }}>📍</span><p style={{ color:"#8a9ab5", fontSize:13 }}>Nenhum check-in para exibir</p></>
     </div>
   );
-  const lats=checkins.map(c=>c.lat), lngs=checkins.map(c=>c.lng);
-  const cLat=(Math.min(...lats)+Math.max(...lats))/2, cLng=(Math.min(...lngs)+Math.max(...lngs))/2;
-  const url=`https://www.openstreetmap.org/export/embed.html?bbox=${cLng-.05},${cLat-.05},${cLng+.05},${cLat+.05}&layer=mapnik&marker=${cLat},${cLng}`;
   return (
     <div style={{ width:"100%", height:"100%", borderRadius:12, overflow:"hidden", position:"relative" }}>
-      <iframe key={url} title="mapa" src={url} style={{ width:"100%", height:"100%", border:"none" }} />
-      <div style={{ position:"absolute", top:8, right:8, background:"rgba(10,16,30,.9)", backdropFilter:"blur(8px)", borderRadius:8, padding:"5px 12px", fontSize:12, border:"1px solid rgba(255,255,255,.08)" }}>
-        {checkins.length} ponto{checkins.length!==1?"s":""}
+      <div ref={mapRef} style={{ width:"100%", height:"100%" }}></div>
+      <div style={{ position:"absolute", top:8, right:8, background:"rgba(10,16,30,.9)", backdropFilter:"blur(8px)", borderRadius:8, padding:"5px 12px", fontSize:12, border:"1px solid rgba(255,255,255,.08)", zIndex:1000 }}>
+        {checkins.filter(c=>c.lat&&c.lng).length} ponto{checkins.filter(c=>c.lat&&c.lng).length!==1?"s":""}
       </div>
     </div>
   );
@@ -896,20 +952,27 @@ function ClienteSearch() {
   const [abaCliente, setAbaCliente] = useState("cadastro");
 
   const buscar = async () => {
-    if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
+    if (!codigo.trim()) { setErro("Informe o código ou CPF/CNPJ do cliente."); return; }
     setErro(""); setBuscando(true); setCliente(null); setFinanceiro(null); setHistorico(null);
     try {
+      // Detect if input is CPF/CNPJ (contains dots, dashes, slashes or is long numeric)
+      const raw = codigo.trim();
+      const digitsOnly = raw.replace(/[^0-9]/g, "");
+      const isCpfCnpj = digitsOnly.length === 11 || digitsOnly.length === 14 || raw.includes(".") || raw.includes("/");
+      const paramKey = isCpfCnpj ? "cpfCnpj" : "clienteId";
+      const paramVal = encodeURIComponent(isCpfCnpj ? digitsOnly : raw);
+
       // Fetch all 3 in parallel
       const hoje = new Date();
       const doisMesesAtras = new Date(hoje); doisMesesAtras.setMonth(doisMesesAtras.getMonth()-2);
       const dataInicial = doisMesesAtras.toISOString().split("T")[0];
 
       const [resCliente, resFin, resHist] = await Promise.all([
-        fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(codigo.trim())}`),
-        fetch(`https://portal.heidermaq.com.br/api/Clientes/FinanceiroEmAberto?clienteId=${encodeURIComponent(codigo.trim())}&registrosPorPagina=100&pagina=1`, {
+        fetch(`${EDGE_FUNCTION_URL}?${paramKey}=${paramVal}`),
+        fetch(`https://portal.heidermaq.com.br/api/Clientes/FinanceiroEmAberto?${paramKey}=${paramVal}&registrosPorPagina=100&pagina=1`, {
           headers: { "Authorization": "3dfdlJsW4yM3ltEuhevqCizMnRvkr5Lc9gyT27O4dx+TclfFHZE5n0rH07PrdS+WST6yGI8bc7p26jLWU80ZNQ==", "Accept": "application/json" }
         }),
-        fetch(`https://portal.heidermaq.com.br/api/Venda/ListarFaturamento?clienteId=${encodeURIComponent(codigo.trim())}&dataEmissao=${dataInicial}&registrosPorPagina=200&pagina=1`, {
+        fetch(`https://portal.heidermaq.com.br/api/Venda/ListarFaturamento?${paramKey}=${paramVal}&dataEmissao=${dataInicial}&registrosPorPagina=200&pagina=1`, {
           headers: { "Authorization": "3dfdlJsW4yM3ltEuhevqCizMnRvkr5Lc9gyT27O4dx+TclfFHZE5n0rH07PrdS+WST6yGI8bc7p26jLWU80ZNQ==", "Accept": "application/json" }
         }),
       ]);
@@ -977,7 +1040,7 @@ function ClienteSearch() {
     <div className="fade-in" style={{ maxWidth:600, margin:"0 auto" }}>
       {/* Search bar */}
       <div style={{ display:"flex", gap:10, marginBottom:24 }}>
-        <input style={{ ...S.input, flex:1 }} placeholder="Código do cliente (ex: 549)"
+        <input style={{ ...S.input, flex:1 }} placeholder="Código do cliente (ex: 549) ou CPF/CNPJ"
           value={codigo} onChange={e=>{ setCodigo(e.target.value); setErro(""); }}
           onKeyDown={e=>e.key==="Enter"&&buscar()} />
         <button className="hvr" style={{ ...S.btn("primary"), padding:"0 20px", whiteSpace:"nowrap" }}
