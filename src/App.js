@@ -442,7 +442,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
                 <label style={{ ...S.label, margin:0 }}>Resumo da Visita</label>
                 <button onClick={gravando ? pararGravacao : iniciarGravacao} disabled={transcrevendo}
                   style={{ display:"flex", alignItems:"center", gap:5, background: gravando ? "rgba(239,68,68,.15)" : "rgba(14,165,233,.1)", border: gravando ? "1px solid rgba(239,68,68,.4)" : "1px solid rgba(14,165,233,.3)", borderRadius:8, padding:"5px 11px", color: gravando ? "#f87171" : "#38bdf8", fontSize:12, fontWeight:600, cursor: transcrevendo ? "not-allowed" : "pointer", fontFamily:"inherit" }}>
-                  {transcrevendo ? <>⏳ Transcrevendo...</> : gravando ? <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f87171", display:"inline-block", animation:"pulse 1s infinite" }} />Parar</> : <>🎤 Gravar</>}
+                  {transcrevendo ? <>⏳ Transcrevendo...</> : gravando ? <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f87171", display:"inline-block", animation:"pulse 1s infinite" }}></span>Parar</> : <>🎤 Gravar</>}
                 </button>
               </div>
               {erroAudio && <div style={{ fontSize:11, color:"#f87171", marginBottom:6 }}>⚠️ {erroAudio}</div>}
@@ -450,7 +450,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
                 <textarea style={{ ...S.textarea, paddingBottom:22, opacity: transcrevendo ? 0.6 : 1 }}
                   placeholder={transcrevendo ? "Transcrevendo áudio..." : "Descreva brevemente o que foi feito na visita..."}
                   value={resumo} maxLength={1000}
-                  onChange={e=>setResumo(e.target.value)} />
+                  onChange={e=>setResumo(e.target.value)}></textarea>
                 <div style={{ position:"absolute", bottom:8, right:12, fontSize:10, color: resumo.length > 900 ? "#fb923c" : "#4a6080" }}>
                   {resumo.length}/1000
                 </div>
@@ -810,7 +810,7 @@ function FollowUpModal({ user, checkin, onSave, onSkip }) {
             style={{ width:"100%", background:"#0a1628", border:"1px solid #1e3050", borderRadius:10, padding:"12px 14px", color:"#e2e8f0", fontFamily:"inherit", fontSize:14, outline:"none", resize:"vertical", minHeight:90, boxSizing:"border-box" }}
             placeholder="Ex: Verificar entrega do pedido, confirmar pagamento..."
             value={observacao} onChange={e=>setObservacao(e.target.value)} autoFocus
-          />
+          ></textarea>
         </div>
 
         {/* Data */}
@@ -1581,7 +1581,7 @@ export default function App() {
           <div style={{ width:34, height:34, borderRadius:10, background:"linear-gradient(135deg,#0ea5e9,#6366f1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>📍</div>
           <div>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:14, fontWeight:700 }}>CheckPoint</div>
-            <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5, marginTop:1 }}><span className="sdot"/> tempo real</div>
+            <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5, marginTop:1 }}><span className="sdot"></span> tempo real</div>
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:14 }}>
