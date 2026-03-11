@@ -217,7 +217,7 @@ function LoginScreen({ onLogin }) {
 const EDGE_FUNCTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/functions/v1/buscar-cliente";
 const TRANSCRIPTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/functions/v1/transcrever-audio";
 
-function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
+function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat, gpsLng }) {
   const [etapa, setEtapa] = useState(1); // 1 = código, 2 = loja + resumo
   const [codigo, setCodigo] = useState("");
   const [resumo, setResumo] = useState("");
@@ -287,25 +287,27 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
     if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
     setErro(""); setValidando(true); setClienteInfo(null);
     try {
-      const res = await fetch(`${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(codigo.trim())}`);
+      // Send GPS coordinates so edge function can calculate real distance
+      let url = `${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(codigo.trim())}`;
+      if (gpsLat && gpsLng) url += `&lat=${gpsLat}&lng=${gpsLng}`;
+      const res = await fetch(url);
       let data = {};
       try { data = await res.json(); } catch { data = {}; }
 
-      if (res.status === 404 || !res.ok || !data.endereco) {
+      if (res.status === 404 || !res.ok || !data.nome) {
         setClienteInfo({ status: "nao_encontrado" });
         setValidando(false); setEtapa(2); return;
       }
 
-      const endCRM = data.endereco;
-      const normalize = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-      const gpsTexto = normalize(gpsEndereco || "");
-      const cidadeCRM = normalize(endCRM.cidade);
-      const logradouroCRM = normalize(endCRM.logradouro);
-      const primeiraPalavraRua = logradouroCRM.split(" ").filter((w) => w.length > 3)[0] || logradouroCRM.split(" ")[0];
-      const match = gpsTexto.includes(cidadeCRM) && gpsTexto.includes(primeiraPalavraRua);
-
       if (data.loja) setLoja(data.loja);
-      setClienteInfo({ status: match ? "ok" : "divergente", nome: data.nome, loja: data.loja, enderecoCRM: endCRM.enderecoCompleto, match });
+      const endCRM = data.endereco;
+      setClienteInfo({
+        status: data.endereco_status || "nao_verificado",
+        nome: data.nome,
+        loja: data.loja,
+        enderecoCRM: endCRM?.enderecoCompleto || "",
+        distancia: data.distancia_metros,
+      });
       setEtapa(2);
     } catch { setClienteInfo({ status: "erro_api" }); setEtapa(2); }
     setValidando(false);
@@ -371,7 +373,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco }) {
               <div style={{ padding:"11px 14px", borderRadius:11, fontSize:13, background:sc.bg, border:`1px solid ${sc.border}`, color:sc.color }}>
                 {clienteInfo.status === "ok" && (
                   <><strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 8px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/>
-                  <span style={{ fontSize:11, color:"#86efac" }}>📍 Endereço confere com o cadastro</span></>
+                  <span style={{ fontSize:11, color:"#86efac" }}>✅ Endereço confere com o cadastro</span></>
                 )}
                 {clienteInfo.status === "divergente" && (
                   <><strong>{clienteInfo.nome}</strong>{clienteInfo.loja && <span style={{ marginLeft:6, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 8px", borderRadius:5 }}>🏪 {clienteInfo.loja}</span>}<br/>
@@ -631,6 +633,144 @@ function AdminUsers({ currentUser }) {
 
 // ─── APP PRINCIPAL ─────────────────────────────────────────────────────────────
 
+
+// ─── FOLLOW UP MODAL ──────────────────────────────────────────────────────────
+function FollowUpModal({ user, checkin, onSave, onSkip }) {
+  const hoje = new Date().toISOString().split("T")[0];
+  const amanha = new Date(Date.now() + 86400000).toISOString().split("T")[0];
+  const [observacao, setObservacao] = useState("");
+  const [data, setData] = useState(amanha);
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState("");
+
+  const salvar = async () => {
+    if (!observacao.trim()) { setErro("Informe o que precisa ser verificado."); return; }
+    if (!data) { setErro("Selecione a data do follow up."); return; }
+    setSalvando(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/followups`, {
+        method: "POST",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify({
+          checkin_id: checkin?.id || null,
+          usuario: user.nome,
+          codigo_cliente: checkin?.codigo_cliente || null,
+          nome_cliente: checkin?.nome_cliente || null,
+          observacao: observacao.trim(),
+          data_followup: data,
+          concluido: false,
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      onSave();
+    } catch(e) {
+      setErro("Erro ao salvar follow up. Tente novamente.");
+    }
+    setSalvando(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1000, padding:20 }}>
+      <div className="fade-in" style={{ background:"#0d1a2e", border:"1px solid #1e3050", borderRadius:20, padding:28, width:"100%", maxWidth:440 }}>
+        {/* Header */}
+        <div style={{ display:"flex", alignItems:"center", gap:14, marginBottom:22 }}>
+          <div style={{ width:46, height:46, borderRadius:13, background:"linear-gradient(135deg,rgba(251,146,60,.2),rgba(251,146,60,.1))", border:"1px solid rgba(251,146,60,.3)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22 }}>🔔</div>
+          <div>
+            <div style={{ fontWeight:700, fontSize:16 }}>Follow Up</div>
+            <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>Agendar lembrete para este cliente</div>
+          </div>
+        </div>
+
+        {/* Cliente info */}
+        {checkin?.codigo_cliente && (
+          <div style={{ background:"rgba(56,189,248,.05)", border:"1px solid rgba(56,189,248,.12)", borderRadius:10, padding:"10px 14px", marginBottom:18, fontSize:13, color:"#94a3b8" }}>
+            🏷️ Cliente: <strong style={{ color:"#e2e8f0" }}>{checkin.codigo_cliente}</strong>
+            {checkin.loja && <span style={{ marginLeft:8, fontSize:11, background:"rgba(99,102,241,.2)", color:"#a5b4fc", padding:"2px 7px", borderRadius:5 }}>🏪 {checkin.loja}</span>}
+          </div>
+        )}
+
+        {/* Observação */}
+        <div style={{ marginBottom:16 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:"#4a6080", letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:7 }}>O que precisa ser verificado?</label>
+          <textarea
+            style={{ width:"100%", background:"#0a1628", border:"1px solid #1e3050", borderRadius:10, padding:"12px 14px", color:"#e2e8f0", fontFamily:"inherit", fontSize:14, outline:"none", resize:"vertical", minHeight:90, boxSizing:"border-box" }}
+            placeholder="Ex: Verificar entrega do pedido, confirmar pagamento..."
+            value={observacao} onChange={e=>setObservacao(e.target.value)} autoFocus
+          />
+        </div>
+
+        {/* Data */}
+        <div style={{ marginBottom:18 }}>
+          <label style={{ fontSize:11, fontWeight:700, color:"#4a6080", letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:7 }}>Data do Follow Up</label>
+          <input
+            type="date" min={hoje}
+            style={{ width:"100%", background:"#0a1628", border:"1px solid #1e3050", borderRadius:10, padding:"12px 14px", color:"#e2e8f0", fontFamily:"inherit", fontSize:14, outline:"none", boxSizing:"border-box" }}
+            value={data} onChange={e=>setData(e.target.value)}
+          />
+        </div>
+
+        {erro && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:9, padding:"9px 13px", color:"#f87171", fontSize:13, marginBottom:14 }}>⚠️ {erro}</div>}
+
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={onSkip} style={{ flex:1, padding:13, background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:12, color:"#94a3b8", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+            Pular
+          </button>
+          <button onClick={salvar} disabled={salvando} style={{ flex:2, padding:13, background:"linear-gradient(135deg,#fb923c,#f97316)", border:"none", borderRadius:12, color:"#fff", fontSize:14, fontWeight:700, cursor:salvando?"not-allowed":"pointer", fontFamily:"inherit", opacity:salvando?.7:1 }}>
+            {salvando ? "Salvando..." : "🔔 Agendar Follow Up"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FOLLOW UP POPUP ──────────────────────────────────────────────────────────
+function FollowUpPopup({ followups, onConcluir, onFechar }) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.8)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000, padding:20 }}>
+      <div className="fade-in" style={{ background:"#0d1a2e", border:"1px solid rgba(251,146,60,.3)", borderRadius:20, padding:28, width:"100%", maxWidth:440, maxHeight:"80vh", overflowY:"auto" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:20 }}>
+          <div style={{ fontSize:28 }}>🔔</div>
+          <div>
+            <div style={{ fontWeight:700, fontSize:16, color:"#fb923c" }}>Follow Ups para Hoje!</div>
+            <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>{followups.length} lembrete{followups.length>1?"s":""} pendente{followups.length>1?"s":""}</div>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:20 }}>
+          {followups.map(f => (
+            <div key={f.id} style={{ background:"rgba(251,146,60,.05)", border:"1px solid rgba(251,146,60,.2)", borderRadius:12, padding:"14px 16px" }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:8 }}>
+                <div>
+                  {f.codigo_cliente && <div style={{ fontSize:12, color:"#fb923c", fontWeight:600, marginBottom:4 }}>🏷️ Cliente {f.codigo_cliente}</div>}
+                  <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.5 }}>{f.observacao}</div>
+                  <div style={{ fontSize:11, color:"#4a6080", marginTop:4 }}>
+                    📅 {new Date(f.data_followup + "T12:00:00").toLocaleDateString("pt-BR")} · {f.usuario}
+                  </div>
+                </div>
+              </div>
+              <button onClick={()=>onConcluir(f.id)}
+                style={{ width:"100%", padding:"8px 12px", background:"rgba(34,197,94,.1)", border:"1px solid rgba(34,197,94,.25)", borderRadius:8, color:"#4ade80", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                ✅ Marcar como concluído
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={onFechar}
+          style={{ width:"100%", padding:13, background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:12, color:"#94a3b8", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+          Fechar — lembrar depois
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── PESQUISA DE CLIENTE ───────────────────────────────────────────────────────
 const EMPRESA_LOJA_MAP = {1:"Matriz",2:"Campinas",3:"Palhoça",4:"Tubarão",6:"Ingleses",8:"Rio Tavares",9:"Forquilhinhas"};
 
@@ -806,15 +946,15 @@ function ClienteSearch() {
                 ) : (
                   <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
                     {/* Totals */}
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+                    <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                       {[
                         { label:"Total em Aberto", value: formatCurrency(financeiro.totalAberto), color:"#38bdf8" },
                         { label:"Total Vencido",   value: formatCurrency(financeiro.totalVencido), color:"#f87171" },
                         { label:"A Vencer",        value: formatCurrency(financeiro.totalAberto - financeiro.totalVencido), color:"#4ade80" },
                       ].map(c => (
-                        <div key={c.label} style={{ background:"rgba(255,255,255,.03)", border:"1px solid #1a2d4a", borderRadius:10, padding:"12px 14px", textAlign:"center" }}>
-                          <div style={{ fontSize:11, color:"#4a6080", marginBottom:6 }}>{c.label}</div>
-                          <div style={{ fontSize:15, fontWeight:700, color:c.color }}>{c.value}</div>
+                        <div key={c.label} style={{ background:"rgba(255,255,255,.03)", border:"1px solid #1a2d4a", borderRadius:10, padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                          <div style={{ fontSize:13, color:"#94a3b8" }}>{c.label}</div>
+                          <div style={{ fontSize:16, fontWeight:700, color:c.color }}>{c.value}</div>
                         </div>
                       ))}
                     </div>
@@ -937,6 +1077,11 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [pendingPos, setPendingPos] = useState(null);
 
+  // Follow Up
+  const [showFollowUp, setShowFollowUp] = useState(false);
+  const [lastCheckin, setLastCheckin] = useState(null);
+  const [followupPopup, setFollowupPopup] = useState([]);
+
   const isAdmin = user?.role === "admin";
 
   const handleLogin = (u) => { localStorage.setItem("checkpoint_user", JSON.stringify(u)); setUser(u); };
@@ -966,6 +1111,36 @@ export default function App() {
     const t = setInterval(fetchCheckins, 10000);
     return () => clearInterval(t);
   }, [fetchCheckins, fetchUsers]);
+
+  // Check for due follow ups on load
+  useEffect(() => {
+    if (!user) return;
+    const checkFollowUps = async () => {
+      try {
+        const hoje = new Date().toISOString().split("T")[0];
+        const path = isAdmin
+          ? `/followups?concluido=eq.false&data_followup=lte.${hoje}&order=data_followup.asc`
+          : `/followups?concluido=eq.false&data_followup=lte.${hoje}&usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
+        const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.length > 0) setFollowupPopup(data);
+        }
+      } catch {}
+    };
+    checkFollowUps();
+  }, [user, isAdmin]);
+
+  const concluirFollowUp = async (id) => {
+    await fetch(`${SUPABASE_URL}/rest/v1/followups?id=eq.${id}`, {
+      method: "PATCH",
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ concluido: true })
+    });
+    setFollowupPopup(prev => prev.filter(f => f.id !== id));
+  };
 
   // Inicia o check-in: pega GPS e abre o modal
   const iniciarCheckIn = async () => {
@@ -1039,16 +1214,23 @@ export default function App() {
       setStatus({ type:"success", msg:"✅ Check-in registrado com sucesso!" });
       setTimeout(()=>setStatus(null), 3500);
 
-      // Then update checkins list
+      // Then update checkins list and trigger follow up
       try {
         const inserted = text ? JSON.parse(text) : null;
         const item = Array.isArray(inserted) ? inserted[0] : inserted;
         if (item) {
           setCheckins(prev => [item, ...prev]);
+          setLastCheckin(item);
         } else {
           await fetchCheckins();
+          setLastCheckin({ codigo_cliente, loja });
         }
-      } catch { await fetchCheckins(); }
+      } catch {
+        await fetchCheckins();
+        setLastCheckin({ codigo_cliente, loja });
+      }
+      // Show follow up modal after short delay
+      setTimeout(() => setShowFollowUp(true), 600);
       return;
 
     } catch(e) {
@@ -1114,7 +1296,9 @@ export default function App() {
         input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5)}
       `}</style>
 
-      {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} gpsEndereco={pendingPos?.endereco||""} />}
+      {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} gpsEndereco={pendingPos?.endereco||""} gpsLat={pendingPos?.lat} gpsLng={pendingPos?.lng} />}
+      {showFollowUp && <FollowUpModal user={user} checkin={lastCheckin} onSave={()=>{ setShowFollowUp(false); setStatus({ type:"success", msg:"🔔 Follow up agendado!" }); setTimeout(()=>setStatus(null),3000); }} onSkip={()=>setShowFollowUp(false)} />}
+      {followupPopup.length > 0 && <FollowUpPopup followups={followupPopup} onConcluir={concluirFollowUp} onFechar={()=>setFollowupPopup([])} />}
 
       {/* Header */}
       <div style={{ background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
