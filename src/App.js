@@ -45,6 +45,7 @@ const exportCSV = (checkins) => {
 };
 
 const LOJAS = ["Matriz","Campinas","Palhoça","Tubarão","Ingleses","Rio Tavares","Forquilinhas"];
+const MOTIVOS_VISITA = ["Novo Cliente","Queda nas Vendas","Alteração de Tabela","Criação de Portal","Problema de Pós Venda","Visita de Rotina"];
 
 const todayStr = () => new Date().toISOString().slice(0,10);
 
@@ -324,11 +325,11 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
   };
 
   const statusColors = {
-    ok:             { bg:"rgba(34,197,94,.08)",   border:"rgba(34,197,94,.25)",   color:"#4ade80" },
-    divergente:     { bg:"rgba(251,146,60,.08)",  border:"rgba(251,146,60,.25)",  color:"#fb923c" },
-    nao_encontrado: { bg:"rgba(239,68,68,.08)",   border:"rgba(239,68,68,.25)",   color:"#f87171" },
-    erro_api:       { bg:"rgba(100,116,139,.08)", border:"rgba(100,116,139,.25)", color:"#94a3b8" },
-    nao_verificado: { bg:"rgba(100,116,139,.06)", border:"rgba(100,116,139,.2)",  color:"#94a3b8" },
+    ok:            { bg:"rgba(34,197,94,.08)",   border:"rgba(34,197,94,.25)",   color:"#4ade80" },
+    divergente:    { bg:"rgba(251,146,60,.08)",  border:"rgba(251,146,60,.25)",  color:"#fb923c" },
+    nao_encontrado:{ bg:"rgba(239,68,68,.08)",   border:"rgba(239,68,68,.25)",   color:"#f87171" },
+    erro_api:      { bg:"rgba(100,116,139,.08)", border:"rgba(100,116,139,.25)", color:"#94a3b8" },
+    nao_verificado:{ bg:"rgba(100,116,139,.06)", border:"rgba(100,116,139,.2)",  color:"#94a3b8" },
   };
   const sc = clienteInfo ? (statusColors[clienteInfo.status] || statusColors["nao_verificado"]) : null;
 
@@ -469,7 +470,6 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 
       </div>
     </div>
-  </div>
   );
 }
 
@@ -1090,7 +1090,7 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
   const fetchFollowups = async () => {
     setLoading(true);
     try {
-      const path = isAdmin
+      let path = isAdmin
         ? `/followups?order=data_followup.asc`
         : `/followups?usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
       const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
@@ -1132,6 +1132,7 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
   });
 
   const labelStyle = { fontSize:11, fontWeight:700, color:"#4a6080", letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:6 };
+
   const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
   const tdStyle = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
 
@@ -1145,8 +1146,8 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
   return (
     <div className="fade-in">
       {/* Filters */}
-      <div style={{ ...S.card, padding:16, marginBottom:18, display:"flex", flexWrap:"wrap", gap:12, alignItems:"flex-end" }}>
-        <div style={{ flex:"1 1 120px" }}>
+      <div style={{ ...S.card, padding:14, marginBottom:16, display:"flex", flexWrap:"wrap", gap:10, alignItems:"flex-end" }}>
+        <div style={{ flex:"1 1 130px" }}>
           <label style={labelStyle}>Status</label>
           <select style={{ ...S.input, appearance:"none" }} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
             <option value="todos">Todos</option>
@@ -1162,8 +1163,7 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
           <label style={labelStyle}>Até</label>
           <input type="date" style={S.input} value={filtroAte} onChange={e=>setFiltroAte(e.target.value)} />
         </div>
-        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); }}
-          style={{ padding:"9px 16px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:9, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Limpar</button>
+        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); }} style={{ padding:"8px 14px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:8, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Limpar</button>
       </div>
 
       {loading ? (
@@ -1174,7 +1174,6 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
           <div>Nenhum follow up encontrado</div>
         </div>
       ) : isAdmin ? (
-        /* ── ADMIN: table layout ── */
         <div style={{ overflowX:"auto" }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
             <thead>
@@ -1211,7 +1210,6 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
           </table>
         </div>
       ) : (
-        /* ── USER: card layout with conclude button ── */
         <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
           {filtered.map(f => {
             const vencido = !f.concluido && f.data_followup < hoje;
@@ -1284,7 +1282,7 @@ export default function App() {
 
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
-  const isDashboard = isAdmin || isGerente; // can access desktop dashboard
+  const isDashboard = isAdmin || isGerente;
 
   const handleLogin = (u) => { localStorage.setItem("checkpoint_user", JSON.stringify(u)); setUser(u); };
   const handleLogout = () => {
@@ -1314,13 +1312,15 @@ export default function App() {
     return () => clearInterval(t);
   }, [fetchCheckins, fetchUsers]);
 
-  // Check for due follow ups on load (users only, not admin)
+  // Check for due follow ups on load
   useEffect(() => {
-    if (!user || isDashboard) return;
+    if (!user) return;
     const checkFollowUps = async () => {
       try {
         const hoje = new Date().toISOString().split("T")[0];
-        const path = `/followups?concluido=eq.false&data_followup=lte.${hoje}&usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
+        const path = isAdmin
+          ? `/followups?concluido=eq.false&data_followup=lte.${hoje}&order=data_followup.asc`
+          : `/followups?concluido=eq.false&data_followup=lte.${hoje}&usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
         const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
           headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
@@ -1706,7 +1706,5 @@ export default function App() {
         )}
       </div>
     </div>
-  </div>
-  </div>
   );
 }
