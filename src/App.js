@@ -1027,7 +1027,7 @@ function ClienteSearch() {
                     ["📞 Telefone",              [cliente.telefone, cliente.celular].filter(Boolean).join(" / ") || null, false],
                     ["📧 E-mail",                cliente.email,         true],
                     ["💳 Forma de Pagamento",    cliente.formaPagamento, false],
-                    ["📊 Tabela de Venda",       tabela,                false],
+                    ["📅 Condição de Pagamento", cliente.condicaoPagamento, false],
                     ["👔 Vendedor",              cliente.vendedor,      false],
                     ["🗺️ Rota",                 cliente.rota,          false],
                     ["🗓️ Última Compra",         cliente.ultimaCompra ? new Date(cliente.ultimaCompra).toLocaleDateString("pt-BR") : null, false],
@@ -1370,17 +1370,17 @@ export default function App() {
   const fetchCheckins = useCallback(async () => {
     if (!user) return;
     try {
-      const path = isAdmin
+      const path = isDashboard
         ? "/checkins?order=timestamp.desc&limit=500"
         : `/checkins?usuario=eq.${encodeURIComponent(user.nome)}&order=timestamp.desc&limit=200`;
       setCheckins(await api(path));
     } catch(e) { console.error(e); } finally { setFetching(false); }
-  }, [user, isAdmin]);
+  }, [user, isDashboard]);
 
   const fetchUsers = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isDashboard) return;
     try { setAllUsers((await api("/app_users?select=nome&order=nome.asc")).map(u=>u.nome)); } catch{}
-  }, [isAdmin]);
+  }, [isDashboard]);
 
   useEffect(() => {
     fetchCheckins(); fetchUsers();
@@ -1529,7 +1529,7 @@ export default function App() {
   // Aplicar filtros
   const applyFilters = (list) => {
     let r = list;
-    if (isAdmin && filterUser !== "Todos") r = r.filter(c => c.usuario === filterUser);
+    if (isDashboard && filterUser !== "Todos") r = r.filter(c => c.usuario === filterUser);
     if (filterDe)  r = r.filter(c => c.timestamp.slice(0,10) >= filterDe);
     if (filterAte) r = r.filter(c => c.timestamp.slice(0,10) <= filterAte);
     if (filterLoja !== "Todas") r = r.filter(c => c.loja === filterLoja);
@@ -1692,7 +1692,7 @@ export default function App() {
               </div>
               <div style={{ display:"flex", gap:8 }}>
                 <button className="hvr" style={{ ...S.btn("ghost"), padding:"11px 13px", fontSize:12 }} onClick={fetchCheckins}>🔄</button>
-                {isAdmin && <button className="hvr" style={{ ...S.btn("success"), padding:"11px 15px", fontSize:12 }} onClick={()=>exportCSV(filtered)} disabled={!filtered.length}>⬇️ CSV</button>}
+                {isDashboard && <button className="hvr" style={{ ...S.btn("success"), padding:"11px 15px", fontSize:12 }} onClick={()=>exportCSV(filtered)} disabled={!filtered.length}>⬇️ CSV</button>}
               </div>
             </div>
 
@@ -1704,7 +1704,7 @@ export default function App() {
                   <div style={{ fontSize:12, fontWeight:600 }}>Check-ins no período</div>
                   <div style={{ fontSize:11, color:"#4a6080", marginTop:1 }}>
                     {filterDe===filterAte ? filterDe : `${filterDe} → ${filterAte}`}
-                    {isAdmin && filterUser!=="Todos" ? ` · ${filterUser}` : ""}
+                    {isDashboard && filterUser!=="Todos" ? ` · ${filterUser}` : ""}
                   </div>
                 </div>
               </div>
