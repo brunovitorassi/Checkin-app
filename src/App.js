@@ -324,10 +324,11 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
   };
 
   const statusColors = {
-    ok:            { bg:"rgba(34,197,94,.08)",   border:"rgba(34,197,94,.25)",   color:"#4ade80" },
-    divergente:    { bg:"rgba(251,146,60,.08)",  border:"rgba(251,146,60,.25)",  color:"#fb923c" },
-    nao_encontrado:{ bg:"rgba(239,68,68,.08)",   border:"rgba(239,68,68,.25)",   color:"#f87171" },
-    erro_api:      { bg:"rgba(100,116,139,.08)", border:"rgba(100,116,139,.25)", color:"#94a3b8" },
+    ok:             { bg:"rgba(34,197,94,.08)",   border:"rgba(34,197,94,.25)",   color:"#4ade80" },
+    divergente:     { bg:"rgba(251,146,60,.08)",  border:"rgba(251,146,60,.25)",  color:"#fb923c" },
+    nao_encontrado: { bg:"rgba(239,68,68,.08)",   border:"rgba(239,68,68,.25)",   color:"#f87171" },
+    erro_api:       { bg:"rgba(100,116,139,.08)", border:"rgba(100,116,139,.25)", color:"#94a3b8" },
+    nao_verificado: { bg:"rgba(100,116,139,.06)", border:"rgba(100,116,139,.2)",  color:"#94a3b8" },
   };
   const sc = clienteInfo ? statusColors[clienteInfo.status] : null;
 
@@ -1373,7 +1374,7 @@ export default function App() {
     }
     try {
       const resumo_visita_truncado = (resumo_visita || "").slice(0, 1000);
-      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, nome_cliente, motivos_visita, resumo_visita: resumo_visita_truncado, loja, endereco_status };
+      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, nome_cliente, motivos_visita: motivos_visita || null, resumo_visita: resumo_visita_truncado, loja, endereco_status };
 
       // Use fetch directly to have full control over the response
       const res = await fetch(`${SUPABASE_URL}/rest/v1/checkins`, {
