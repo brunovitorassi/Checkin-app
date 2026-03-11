@@ -668,6 +668,7 @@ function ClienteSearch() {
 
       const cData = await resCliente.json();
       if (!cData.nome) { setErro("Cliente não encontrado."); setBuscando(false); return; }
+      console.log("🔍 RAW CLIENTE:", JSON.stringify(cData._raw || cData, null, 2));
       setCliente(cData);
 
       if (resFin.ok) {
@@ -764,29 +765,36 @@ function ClienteSearch() {
             {/* ABA CADASTRO */}
             {abaCliente === "cadastro" && (
               <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
-                {[
-                  ["👤 Nome",               cliente.nome],
-                  ["🪪 CPF/CNPJ",           cliente.cpfCnpj],
-                  ["📍 Endereço",            cliente.endereco?.enderecoCompleto],
-                  ["📞 Telefone",            [cliente.telefone, cliente.celular].filter(Boolean).join(" / ") || null],
-                  ["📧 E-mail",              cliente.email],
-                  ["🏷️ Segmento",            cliente.segmento],
-                  ["📊 Tabela de Venda",     cliente.tabelaVenda],
-                  ["💳 Forma de Pagamento",  cliente.formaPagamento],
-                  ["📅 Condição de Pagamento", cliente.condicaoPagamento],
-                  ["👔 Vendedor",            cliente.vendedor],
-                  ["🗺️ Rota",               cliente.rota],
-                  ["🗓️ Última Compra",       cliente.ultimaCompra ? new Date(cliente.ultimaCompra).toLocaleDateString("pt-BR") : null],
-                ].map(([label, val]) => {
-                  const value = val;
-                  if (!value) return null;
-                  return (
-                    <div key={label} style={{ display:"flex", gap:10, alignItems:"flex-start", paddingBottom:12, borderBottom:"1px solid #0f1e33" }}>
-                      <div style={{ fontSize:12, color:"#4a6080", minWidth:160, flexShrink:0 }}>{label}</div>
-                      <div style={{ fontSize:13, color:"#e2e8f0", fontWeight:500, lineHeight:1.5 }}>{value}</div>
-                    </div>
-                  );
-                })}
+                {(() => {
+                  const raw = cliente._raw || {};
+                  const tabela = cliente.tabelaVenda
+                    || raw.tabelaPreco?.nome || raw.tabela?.nome || raw.tabelaVenda?.nome
+                    || raw.tabelaPrecoNome || raw.tabelaVendaNome || raw.tabela
+                    || (typeof raw.tabelaPreco === "string" ? raw.tabelaPreco : null)
+                    || null;
+                  const fields = [
+                    ["👤 Nome",                  cliente.nome,          false],
+                    ["🪪 CPF/CNPJ",              cliente.cpfCnpj,       false],
+                    ["📍 Endereço",              cliente.endereco?.enderecoCompleto, false],
+                    ["📞 Telefone",              [cliente.telefone, cliente.celular].filter(Boolean).join(" / ") || null, false],
+                    ["📧 E-mail",                cliente.email,         true],
+                    ["📊 Tabela de Venda",       tabela,                false],
+                    ["💳 Forma de Pagamento",    cliente.formaPagamento, false],
+                    ["📅 Condição de Pagamento", cliente.condicaoPagamento, false],
+                    ["👔 Vendedor",              cliente.vendedor,      false],
+                    ["🗺️ Rota",                 cliente.rota,          false],
+                    ["🗓️ Última Compra",         cliente.ultimaCompra ? new Date(cliente.ultimaCompra).toLocaleDateString("pt-BR") : null, false],
+                  ];
+                  return fields.map(([label, value, isEmail]) => {
+                    if (!value) return null;
+                    return (
+                      <div key={label} style={{ display:"flex", gap:10, alignItems:"flex-start", paddingBottom:12, borderBottom:"1px solid #0f1e33" }}>
+                        <div style={{ fontSize:12, color:"#4a6080", minWidth:160, flexShrink:0 }}>{label}</div>
+                        <div style={{ fontSize:13, color:"#e2e8f0", fontWeight:500, lineHeight:1.5, wordBreak: isEmail ? "break-all" : "normal" }}>{value}</div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
 
@@ -1003,23 +1011,33 @@ export default function App() {
     }
     try {
       const resumo_visita_truncado = (resumo_visita || "").slice(0, 1000);
-      const [inserted] = await api("/checkins", {
+      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita: resumo_visita_truncado, loja, endereco_status };
+      console.log("📤 Enviando check-in:", payload);
+      const result = await api("/checkins", {
         method:"POST",
-        body: JSON.stringify({ usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, resumo_visita: resumo_visita_truncado, loja, endereco_status })
+        body: JSON.stringify(payload)
       });
-      setCheckins(prev => [inserted, ...prev]);
+      console.log("✅ Resposta Supabase:", result);
+      const inserted = Array.isArray(result) ? result[0] : result;
+      if (inserted) {
+        setCheckins(prev => [inserted, ...prev]);
+      } else {
+        // Even if no data returned, refresh from server
+        const fresh = await api("/checkins?order=timestamp.desc&limit=50");
+        setCheckins(fresh);
+      }
       setShowModal(false); setPendingPos(null);
-      setStatus({ type:"success", msg:"Check-in registrado com sucesso!" });
+      setStatus({ type:"success", msg:"✅ Check-in registrado com sucesso!" });
       setTimeout(()=>setStatus(null), 3500);
     } catch(e) {
+      console.error("❌ Erro check-in:", e);
       const msg = e?.message || String(e);
-      // If it's a duplicate key or RLS error, show specific message
       const friendly = msg.includes("duplicate") ? "Check-in duplicado detectado."
         : msg.includes("violates") ? "Erro de validação no servidor."
-        : "Erro ao salvar: " + msg.slice(0,120);
+        : msg.includes("JWT") || msg.includes("auth") ? "Erro de autenticação. Faça login novamente."
+        : "Erro ao salvar: " + msg.slice(0, 200);
       setStatus({ type:"error", msg:"⚠️ " + friendly });
-      setTimeout(()=>setStatus(null), 6000);
-      // Don't close modal on error so user can retry
+      setTimeout(()=>setStatus(null), 8000);
     }
     setLoading(false);
   };
