@@ -602,6 +602,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
   const tdStyle = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
 
   return (
+    <>
     <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid #1a2d4a" }}>
       <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isAdmin ? 800 : 600 }}>
         <thead style={{ background:"#07101f" }}>
@@ -665,6 +666,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
       </table>
     </div>
     {resumoAberto && <ResumoModal checkin={resumoAberto} onClose={()=>setResumoAberto(null)} />}
+    </>
   );
 }
 
