@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import S from "../utils/styles";
-import { LOJAS, MOTIVOS_VISITA, TRANSCRIPTION_URL, EDGE_FUNCTION_URL } from "../utils/constants";
+import { LOJAS, MOTIVOS_VISITA, TRANSCRIPTION_URL, EDGE_FUNCTION_URL, SUPABASE_URL, SUPABASE_KEY } from "../utils/constants";
 
 function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat, gpsLng }) {
   const [etapa, setEtapa] = useState(1); // 1 = código, 2 = loja + resumo
@@ -14,10 +14,14 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
   const [gravando, setGravando] = useState(false);
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [erroAudio, setErroAudio] = useState("");
+  const [fotoFile, setFotoFile] = useState(null);
+  const [fotoPreview, setFotoPreview] = useState(null);
+  const [uploadandoFoto, setUploadandoFoto] = useState(false);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const fotoInputRef = useRef(null);
 
-  const toggleMotivo = (m) => setMotivos(prev => prev.includes(m) ? prev.filter(x=>x!==m) : [...prev, m]);
+  const toggleMotivo = (m) => setMotivos(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
 
   const iniciarGravacao = async () => {
     setErroAudio("");
@@ -37,7 +41,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
         const blob = new Blob(chunksRef.current, { type: mimeType });
         await transcreverAudio(blob, mimeType);
       };
-      mr.start(100); // collect chunks every 100ms
+      mr.start(100);
       mediaRecorderRef.current = mr;
       setGravando(true);
     } catch {
@@ -75,7 +79,6 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
     if (!codigo.trim()) { setErro("Informe o código do cliente."); return; }
     setErro(""); setValidando(true); setClienteInfo(null);
     try {
-      // Send GPS coordinates so edge function can calculate real distance
       let url = `${EDGE_FUNCTION_URL}?clienteId=${encodeURIComponent(codigo.trim())}`;
       if (gpsLat && gpsLng) url += `&lat=${gpsLat}&lng=${gpsLng}`;
       const res = await fetch(url);
@@ -101,11 +104,59 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
     setValidando(false);
   };
 
-  const handleConfirm = () => {
+  const handleFotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFotoFile(file);
+    setFotoPreview(URL.createObjectURL(file));
+    setErro("");
+  };
+
+  const handleConfirm = async () => {
     if (!loja) { setErro("Selecione a loja."); return; }
     if (motivos.length === 0) { setErro("Selecione ao menos um motivo da visita."); return; }
     if (!resumo.trim()) { setErro("Informe o resumo da visita."); return; }
-    setErro(""); onConfirm({ codigo_cliente: codigo.trim(), nome_cliente: clienteInfo?.nome || null, resumo_visita: resumo.trim(), motivos_visita: motivos.join(", "), loja, endereco_status: clienteInfo?.status ?? "nao_verificado" });
+    if (!fotoFile) { setErro("📷 Foto da fachada é obrigatória."); return; }
+
+    setErro("");
+    setUploadandoFoto(true);
+
+    try {
+      const timestamp = Date.now();
+      const userId = String(user?.id || user?.email || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const filePath = `${userId}/${timestamp}.jpg`;
+
+      const uploadRes = await fetch(
+        `${SUPABASE_URL}/storage/v1/object/fotos-checkin/${filePath}`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": fotoFile.type || "image/jpeg",
+            "x-upsert": "true",
+          },
+          body: fotoFile,
+        }
+      );
+
+      if (!uploadRes.ok) throw new Error("Falha no upload da foto");
+
+      const fotoUrl = `${SUPABASE_URL}/storage/v1/object/public/fotos-checkin/${filePath}`;
+
+      onConfirm({
+        codigo_cliente: codigo.trim(),
+        nome_cliente: clienteInfo?.nome || null,
+        resumo_visita: resumo.trim(),
+        motivos_visita: motivos.join(", "),
+        loja,
+        endereco_status: clienteInfo?.status ?? "nao_verificado",
+        foto_url: fotoUrl,
+      });
+    } catch {
+      setErro("Falha ao enviar a foto. Tente novamente.");
+    }
+
+    setUploadandoFoto(false);
   };
 
   const statusColors = {
@@ -128,7 +179,6 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
             <div style={{ fontWeight:700, fontSize:15 }}>Detalhes da Visita</div>
             <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>{etapa === 1 ? "Informe o código do cliente" : "Confirme a loja e descreva a visita"}</div>
           </div>
-          {/* Step indicator */}
           <div style={{ display:"flex", gap:5 }}>
             {[1,2].map(n => (
               <div key={n} style={{ width:8, height:8, borderRadius:"50%", background: etapa >= n ? "#0ea5e9" : "#1e3050" }} />
@@ -155,7 +205,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
           </div>
         )}
 
-        {/* ETAPA 2 — Loja + Resumo */}
+        {/* ETAPA 2 — Loja + Foto + Resumo */}
         {etapa === 2 && (
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
             {/* Client info card */}
@@ -220,6 +270,45 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
               </div>
             </div>
 
+            {/* Foto da Fachada */}
+            <div>
+              <label style={S.label}>Foto da Fachada</label>
+              <input
+                ref={fotoInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                style={{ display:"none" }}
+                onChange={handleFotoChange}
+              />
+              {!fotoPreview ? (
+                <button
+                  className="hvr"
+                  type="button"
+                  style={{ ...S.btn("ghost"), width:"100%", padding:13, border:"1px dashed #1e3050" }}
+                  onClick={() => fotoInputRef.current?.click()}
+                >
+                  📷 Tirar Foto da Fachada
+                </button>
+              ) : (
+                <div>
+                  <img
+                    src={fotoPreview}
+                    alt="Fachada"
+                    style={{ width:"100%", maxHeight:200, objectFit:"cover", borderRadius:12, display:"block" }}
+                  />
+                  <button
+                    className="hvr"
+                    type="button"
+                    style={{ ...S.btn("ghost"), width:"100%", padding:10, marginTop:8, fontSize:12 }}
+                    onClick={() => fotoInputRef.current?.click()}
+                  >
+                    🔄 Tirar outra
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Resumo */}
             <div>
               <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:7 }}>
@@ -244,9 +333,9 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
             {erro && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:9, padding:"9px 13px", color:"#f87171", fontSize:13 }}>⚠️ {erro}</div>}
 
             <div style={{ display:"flex", gap:10, marginTop:4 }}>
-              <button className="hvr" style={{ ...S.btn("ghost"), flex:1, padding:13 }} onClick={()=>{ setEtapa(1); setErro(""); }} disabled={loading}>← Voltar</button>
-              <button className="hvr" style={{ ...S.btn("primary"), flex:2, padding:13 }} onClick={handleConfirm} disabled={loading}>
-                {loading ? "📡 Registrando..." : "✅ Confirmar Check-in"}
+              <button className="hvr" style={{ ...S.btn("ghost"), flex:1, padding:13 }} onClick={()=>{ setEtapa(1); setErro(""); }} disabled={loading || uploadandoFoto}>← Voltar</button>
+              <button className="hvr" style={{ ...S.btn("primary"), flex:2, padding:13 }} onClick={handleConfirm} disabled={loading || uploadandoFoto}>
+                {uploadandoFoto ? "📤 Enviando foto..." : loading ? "📡 Registrando..." : "✅ Confirmar Check-in"}
               </button>
             </div>
           </div>

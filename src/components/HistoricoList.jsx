@@ -19,14 +19,29 @@ function ResumoModal({ checkin, onClose }) {
   );
 }
 
+function FotoModal({ url, onClose }) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3000, padding:20 }} onClick={onClose}>
+      <img
+        src={url}
+        alt="Foto do check-in"
+        style={{ maxWidth:"100%", maxHeight:"90vh", borderRadius:12, objectFit:"contain" }}
+        onClick={e=>e.stopPropagation()}
+      />
+    </div>
+  );
+}
+
 function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
   const [resumoAberto, setResumoAberto] = useState(null);
+  const [fotoAberta, setFotoAberta] = useState(null);
+
   if (loading) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
   if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
 
   const cols = isAdmin
-    ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", ""]
-    : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo"];
+    ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto", ""]
+    : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto"];
 
   const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
   const tdStyle = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
@@ -34,7 +49,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
   return (
     <>
       <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid #1a2d4a" }}>
-        <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isAdmin ? 800 : 600 }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isAdmin ? 900 : 680 }}>
           <thead style={{ background:"#07101f" }}>
             <tr>
               {cols.map(c => <th key={c} style={thStyle}>{c}</th>)}
@@ -46,8 +61,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
               const avatar = (c.usuario||"?").split(" ").map((n)=>n[0]).join("").slice(0,2).toUpperCase();
               const avatarBg = `hsl(${(c.usuario||"").charCodeAt(0)*7%360},55%,35%)`;
               return (
-                <tr key={c.id} style={{ background: i%2===0 ? "#0a1628" : "#07101f" }}
-                  className="hvr-row">
+                <tr key={c.id} style={{ background: i%2===0 ? "#0a1628" : "#07101f" }} className="hvr-row">
                   <td style={{ ...tdStyle, color:"#4a6080", fontWeight:600, width:36 }}>{checkins.length-i}</td>
                   {isAdmin && (
                     <td style={tdStyle}>
@@ -84,6 +98,11 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
                       ? <span onClick={()=>setResumoAberto(c)} style={{ color:"#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block", cursor:"pointer" }} title="Clique para ver tudo">{c.resumo_visita}</span>
                       : <span style={{ color:"#4a6080" }}>—</span>}
                   </td>
+                  <td style={{ ...tdStyle, width:64 }}>
+                    {c.foto_url
+                      ? <img src={c.foto_url} alt="foto" style={{ width:48, height:48, borderRadius:8, objectFit:"cover", cursor:"pointer", display:"block" }} onClick={()=>setFotoAberta(c.foto_url)} />
+                      : <span style={{ color:"#4a6080" }}>—</span>}
+                  </td>
                   {isAdmin && (
                     <td style={{ ...tdStyle, width:36 }}>
                       <button style={{ ...S.btn("danger"), padding:"3px 8px", fontSize:11 }} onClick={()=>onDelete(c.id)}>✕</button>
@@ -96,6 +115,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
         </table>
       </div>
       {resumoAberto && <ResumoModal checkin={resumoAberto} onClose={()=>setResumoAberto(null)} />}
+      {fotoAberta && <FotoModal url={fotoAberta} onClose={()=>setFotoAberta(null)} />}
     </>
   );
 }
