@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import S from "../utils/styles";
 import { EDGE_FUNCTION_URL, TABELAS_PRECO } from "../utils/constants";
-import { formatCurrency } from "../utils/helpers";
+import { formatCurrency, api } from "../utils/helpers";
+import SolicitacaoVisitaModal from "./SolicitacaoVisitaModal";
 
 const EMPRESA_LOJA_MAP = {1:"Matriz",2:"Campinas",3:"Palhoça",4:"Tubarão",6:"Ingleses",8:"Rio Tavares",9:"Forquilhinhas"};
 
-function ClienteSearch() {
+function ClienteSearch({ isDashboard, user }) {
   const [codigo, setCodigo] = useState("");
   const [buscando, setBuscando] = useState(false);
   const [cliente, setCliente] = useState(null);
@@ -13,6 +14,9 @@ function ClienteSearch() {
   const [historico, setHistorico] = useState(null);
   const [erro, setErro] = useState("");
   const [abaCliente, setAbaCliente] = useState("cadastro");
+  const [showSolicitacao, setShowSolicitacao] = useState(false);
+  const [usuarios, setUsuarios] = useState([]);
+  const [codigoAtual, setCodigoAtual] = useState("");
 
   const buscar = async () => {
     if (!codigo.trim()) { setErro("Informe o código ou CPF/CNPJ do cliente."); return; }
@@ -20,6 +24,7 @@ function ClienteSearch() {
     try {
       // Detect if input is CPF/CNPJ (contains dots, dashes, slashes or is long numeric)
       const raw = codigo.trim();
+      setCodigoAtual(raw);
       const digitsOnly = raw.replace(/[^0-9]/g, "");
       const isCpfCnpj = digitsOnly.length === 11 || digitsOnly.length === 14 || raw.includes(".") || raw.includes("/");
       const paramKey = isCpfCnpj ? "cpfCnpj" : "clienteId";
@@ -44,6 +49,13 @@ function ClienteSearch() {
       if (!cData.nome) { setErro("Cliente não encontrado."); setBuscando(false); return; }
       console.log("🔍 RAW CLIENTE:", JSON.stringify(cData._raw || cData, null, 2));
       setCliente(cData);
+
+      if (isDashboard) {
+        try {
+          const uData = await api("/app_users?select=id,nome,email,role&order=nome.asc");
+          setUsuarios(uData);
+        } catch { /* silent */ }
+      }
 
       if (resFin.ok) {
         const fData = await resFin.json();
@@ -163,6 +175,17 @@ function ClienteSearch() {
                     );
                   });
                 })()}
+                {isDashboard && (
+                  <div style={{ marginTop: 8 }}>
+                    <button
+                      className="hvr"
+                      style={{ ...S.btn("outline"), width: "100%", padding: 12 }}
+                      onClick={() => setShowSolicitacao(true)}
+                    >
+                      📋 Solicitar Visita
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -270,6 +293,16 @@ function ClienteSearch() {
           <div style={{ fontSize:14, fontWeight:600, marginBottom:6 }}>Pesquisa de Cliente</div>
           <div style={{ fontSize:13 }}>Digite o código do cliente para ver seus dados, financeiro e histórico de compras</div>
         </div>
+      )}
+
+      {showSolicitacao && cliente && (
+        <SolicitacaoVisitaModal
+          clienteInfo={{ codigo: codigoAtual, nome: cliente.nome, loja: cliente.loja }}
+          usuarios={usuarios}
+          user={user}
+          onClose={() => setShowSolicitacao(false)}
+          onSalvo={() => setShowSolicitacao(false)}
+        />
       )}
     </div>
   );

@@ -12,6 +12,8 @@ import FollowUpModal from "./components/FollowUpModal";
 import FollowUpPopup from "./components/FollowUpPopup";
 import ClienteSearch from "./components/ClienteSearch";
 import FollowUpsTab from "./components/FollowUpsTab";
+import SolicitacoesTab from "./components/SolicitacoesTab";
+import SolicitacaoPopup from "./components/SolicitacaoPopup";
 
 // ─── MOBILE GUARD ─────────────────────────────────────────────────────────────
 const isMobile = () => {
@@ -201,6 +203,26 @@ export default function App() {
         await fetchCheckins();
         setLastCheckin({ codigo_cliente, nome_cliente, loja });
       }
+      // Silently mark matching solicitacao as concluida
+      try {
+        let checkinId = null;
+        try { const parsed = text ? JSON.parse(text) : null; checkinId = (Array.isArray(parsed) ? parsed[0] : parsed)?.id ?? null; } catch { /* silent */ }
+        const codigoCliente = codigo_cliente;
+        const sols = await api(
+          `/solicitacoes_visita?promotor=eq.${encodeURIComponent(user.email)}&codigo_cliente=eq.${encodeURIComponent(codigoCliente)}&status=eq.pendente`
+        );
+        if (sols?.length > 0) {
+          await api(
+            `/solicitacoes_visita?promotor=eq.${encodeURIComponent(user.email)}&codigo_cliente=eq.${encodeURIComponent(codigoCliente)}&status=eq.pendente`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({ status: "concluida", checkin_id: checkinId }),
+              headers: { "Prefer": "return=minimal" },
+            }
+          );
+        }
+      } catch { /* silent */ }
+
       // Show follow up modal after short delay
       setTimeout(() => setShowFollowUp(true), 600);
       return;
@@ -243,6 +265,7 @@ export default function App() {
     { id:"historico",  label:"Histórico",  icon:"📋" },
     { id:"clientes",   label:"Clientes",   icon:"🔍" },
     { id:"followups",  label:"Follow Ups", icon:"🔔" },
+    ...(!isDashboard ? [{ id:"solicitacoes", label:"Solicitações", icon:"📋" }] : []),
     ...(isDashboard ? [{ id:"mapa", label:"Mapa", icon:"🗺️" }] : []),
     ...(isAdmin ? [{ id:"usuarios", label:"Usuários", icon:"👥" }] : []),
   ];
@@ -270,6 +293,7 @@ export default function App() {
       {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} gpsEndereco={pendingPos?.endereco||""} gpsLat={pendingPos?.lat} gpsLng={pendingPos?.lng} />}
       {showFollowUp && <FollowUpModal user={user} checkin={lastCheckin} onSave={()=>{ setShowFollowUp(false); setStatus({ type:"success", msg:"🔔 Follow up agendado!" }); setTimeout(()=>setStatus(null),3000); }} onSkip={()=>setShowFollowUp(false)} />}
       {followupPopup.length > 0 && <FollowUpPopup followups={followupPopup} onConcluir={concluirFollowUp} onFechar={()=>setFollowupPopup([])} />}
+      {user?.role === "user" && <SolicitacaoPopup user={user} onClose={() => {}} />}
 
       {/* Header */}
       <div style={{ background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
@@ -469,13 +493,16 @@ export default function App() {
 
         {/* CLIENTES */}
         {tab==="clientes" && (
-          <div className="fade-in"><ClienteSearch /></div>
+          <div className="fade-in"><ClienteSearch isDashboard={isDashboard} user={user} /></div>
         )}
 
         {/* FOLLOW UPS */}
         {tab==="followups" && (
           <div className="fade-in"><FollowUpsTab user={user} isAdmin={isDashboard} canDelete={isAdmin} /></div>
         )}
+
+        {/* SOLICITAÇÕES */}
+        {tab==="solicitacoes" && <SolicitacoesTab user={user} />}
       </div>
     </div>
   );
