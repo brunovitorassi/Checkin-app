@@ -32,15 +32,15 @@ function FotoModal({ url, onClose }) {
   );
 }
 
-function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
+function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading }) {
   const [resumoAberto, setResumoAberto] = useState(null);
   const [fotoAberta, setFotoAberta] = useState(null);
 
   if (loading) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
   if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
 
-  const cols = isAdmin
-    ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto", ""]
+  const cols = isDashboard
+    ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto", ...(isAdmin ? [""] : [])]
     : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto"];
 
   const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
@@ -49,7 +49,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
   return (
     <>
       <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid #1a2d4a" }}>
-        <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isAdmin ? 900 : 680 }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isDashboard ? 900 : 680 }}>
           <thead style={{ background:"#07101f" }}>
             <tr>
               {cols.map(c => <th key={c} style={thStyle}>{c}</th>)}
@@ -63,7 +63,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
               return (
                 <tr key={c.id} style={{ background: i%2===0 ? "#0a1628" : "#07101f" }} className="hvr-row">
                   <td style={{ ...tdStyle, color:"#4a6080", fontWeight:600, width:36 }}>{checkins.length-i}</td>
-                  {isAdmin && (
+                  {isDashboard && (
                     <td style={tdStyle}>
                       <div style={{ display:"flex", alignItems:"center", gap:7 }}>
                         <div style={{ width:26, height:26, borderRadius:"50%", background:avatarBg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, color:"#fff", flexShrink:0 }}>{avatar}</div>

@@ -388,7 +388,7 @@ export default function App() {
           <div className="fade-in">
             {/* Filtros */}
             <div style={{ ...S.card, padding:16, marginBottom:18, display:"flex", flexWrap:"wrap", gap:12, alignItems:"flex-end" }}>
-              {isAdmin && (
+              {isDashboard && (
                 <div style={{ flex:"1 1 140px" }}>
                   <label style={S.label}>Usuário</label>
                   <select style={{ ...S.input, appearance:"none" }} value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
@@ -434,7 +434,7 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              {isAdmin && (
+              {isDashboard && (
                 <div style={{ ...S.card, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
                   <div style={{ fontSize:22, fontFamily:"'Space Mono',monospace", fontWeight:700, color:"#a78bfa" }}>
                     {[...new Set(filtered.map(c=>c.usuario))].length}
@@ -447,7 +447,7 @@ export default function App() {
               )}
             </div>
 
-            <HistoricoList checkins={filtered} onDelete={handleDeleteCheckin} isAdmin={isAdmin} loading={fetching} />
+            <HistoricoList checkins={filtered} onDelete={handleDeleteCheckin} isAdmin={isAdmin} isDashboard={isDashboard} loading={fetching} />
           </div>
         )}
 
