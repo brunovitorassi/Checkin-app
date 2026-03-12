@@ -123,8 +123,10 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 
     try {
       const timestamp = Date.now();
-      const userId = String(user?.id || user?.email || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
-      const filePath = `${userId}/${timestamp}.jpg`;
+      const usuario = String(user?.id || user?.email || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const filePath = `${usuario}/${timestamp}.jpg`;
+
+      const arrayBuffer = await fotoFile.arrayBuffer();
 
       const uploadRes = await fetch(
         `${SUPABASE_URL}/storage/v1/object/fotos-checkin/${filePath}`,
@@ -132,14 +134,18 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
           method: "POST",
           headers: {
             "Authorization": `Bearer ${SUPABASE_KEY}`,
-            "Content-Type": fotoFile.type || "image/jpeg",
+            "Content-Type": "image/jpeg",
             "x-upsert": "true",
+            "apikey": SUPABASE_KEY,
           },
-          body: fotoFile,
+          body: arrayBuffer,
         }
       );
 
-      if (!uploadRes.ok) throw new Error("Falha no upload da foto");
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text();
+        throw new Error(`Upload falhou (${uploadRes.status}): ${errText}`);
+      }
 
       const fotoUrl = `${SUPABASE_URL}/storage/v1/object/public/fotos-checkin/${filePath}`;
 
@@ -152,8 +158,8 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
         endereco_status: clienteInfo?.status ?? "nao_verificado",
         foto_url: fotoUrl,
       });
-    } catch {
-      setErro("Falha ao enviar a foto. Tente novamente.");
+    } catch(err) {
+      setErro(err.message || "Falha ao enviar foto. Tente novamente.");
     }
 
     setUploadandoFoto(false);
