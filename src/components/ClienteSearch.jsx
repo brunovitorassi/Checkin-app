@@ -154,7 +154,7 @@ function ClienteSearch() {
                     ["📞 Telefone",              [cliente.telefone, cliente.celular].filter(Boolean).join(" / ") || null, false],
                     ["📧 E-mail",                cliente.email,         true],
                     ["💳 Forma de Pagamento",    cliente.formaPagamento, false],
-                    ["📅 Condição de Pagamento", cliente.condicaoPagamento, false],
+                    ["🏷️ Tabela de Preço",       tabela,                false],
                     ["👔 Vendedor",              cliente.vendedor,      false],
                     ["🗺️ Rota",                 cliente.rota,          false],
                     ["🗓️ Última Compra",         cliente.ultimaCompra ? new Date(cliente.ultimaCompra).toLocaleDateString("pt-BR") : null, false],
