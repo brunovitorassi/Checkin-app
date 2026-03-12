@@ -8,3 +8,12 @@ export const EDGE_FUNCTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/funct
 export const TRANSCRIPTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/functions/v1/transcrever-audio";
 
 export const todayStr = () => new Date().toISOString().slice(0, 10);
+
+export const TABELAS_PRECO = {
+  1: "Tabela 1",
+  2: "Tabela 2",
+  3: "Tabela 3",
+  4: "Tabela 4",
+  5: "Tabela 5",
+  6: "Tabela 6"
+};

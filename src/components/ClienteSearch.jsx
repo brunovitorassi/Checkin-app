@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import S from "../utils/styles";
-import { EDGE_FUNCTION_URL } from "../utils/constants";
+import { EDGE_FUNCTION_URL, TABELAS_PRECO } from "../utils/constants";
 import { formatCurrency } from "../utils/helpers";
 
 const EMPRESA_LOJA_MAP = {1:"Matriz",2:"Campinas",3:"Palhoça",4:"Tubarão",6:"Ingleses",8:"Rio Tavares",9:"Forquilhinhas"};
@@ -140,12 +140,6 @@ function ClienteSearch() {
             {abaCliente === "cadastro" && (
               <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
                 {(() => {
-                  const raw = cliente._raw || {};
-                  const tabela = cliente.tabelaVenda
-                    || raw.tabelaPreco?.nome || raw.tabela?.nome || raw.tabelaVenda?.nome
-                    || raw.tabelaPrecoNome || raw.tabelaVendaNome || raw.tabela
-                    || (typeof raw.tabelaPreco === "string" ? raw.tabelaPreco : null)
-                    || null;
                   const fields = [
                     ["👤 Nome",                  cliente.nome,          false],
                     ["🔢 Código",                cliente.clienteId ? String(cliente.clienteId) : null, false],
@@ -154,7 +148,7 @@ function ClienteSearch() {
                     ["📞 Telefone",              [cliente.telefone, cliente.celular].filter(Boolean).join(" / ") || null, false],
                     ["📧 E-mail",                cliente.email,         true],
                     ["💳 Forma de Pagamento",    cliente.formaPagamento, false],
-                    ["🏷️ Tabela de Preço",       tabela,                false],
+                    ["🏷️ Tabela de Preço",       cliente.tabelaPrecoId ? TABELAS_PRECO[cliente.tabelaPrecoId] || `Tabela ${cliente.tabelaPrecoId}` : null, false],
                     ["👔 Vendedor",              cliente.vendedor,      false],
                     ["🗺️ Rota",                 cliente.rota,          false],
                     ["🗓️ Última Compra",         cliente.ultimaCompra ? new Date(cliente.ultimaCompra).toLocaleDateString("pt-BR") : null, false],
