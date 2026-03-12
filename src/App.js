@@ -320,14 +320,18 @@ export default function App() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display:"flex", padding:"14px 24px 0", gap:4 }}>
+      <div style={{ display:"flex", width:"100%", overflowX:"hidden", padding:"14px 8px 0", gap:2 }}>
         {tabs.map(t => (
           <button key={t.id} className="tab-btn" onClick={()=>setTab(t.id)} style={{
-            padding:"8px 16px", borderRadius:"10px 10px 0 0", fontSize:13, fontWeight:600,
+            flex:1, padding:"8px 4px", borderRadius:"10px 10px 0 0", fontWeight:600,
             color:tab===t.id?"#38bdf8":"#4a6080",
             background:tab===t.id?"rgba(56,189,248,.08)":"transparent",
             borderBottom:tab===t.id?"2px solid #38bdf8":"2px solid transparent",
-          }}>{t.icon} {t.label}</button>
+            display:"flex", flexDirection:"column", alignItems:"center", gap:2,
+          }}>
+            <span style={{ fontSize:18 }}>{t.icon}</span>
+            <span style={{ fontSize:10 }}>{t.label}</span>
+          </button>
         ))}
       </div>
 
