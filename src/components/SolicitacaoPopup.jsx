@@ -40,6 +40,7 @@ function SolicitacaoPopup({ user, onClose }) {
       /* silent */
     }
     setMarcando(false);
+    setSolicitacoes([]);
     onClose();
   };
 
