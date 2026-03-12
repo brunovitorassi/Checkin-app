@@ -470,6 +470,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 
       </div>
     </div>
+  </div>
   );
 }
 
@@ -572,7 +573,25 @@ const ENDERECO_STATUS_STYLE = {
   erro_api:       { color:"#94a3b8", icon:"⚡", title:"CRM indisponível na verificação" },
 };
 
+function ResumoModal({ checkin, onClose }) {
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3000, padding:20 }} onClick={onClose}>
+      <div style={{ background:"#0d1a2e", border:"1px solid #1a2d4a", borderRadius:16, padding:28, width:"100%", maxWidth:520, maxHeight:"80vh", overflowY:"auto" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+          <div style={{ fontWeight:700, fontSize:14, color:"#38bdf8" }}>📝 Resumo da Visita</div>
+          <button style={{ ...S.btn("ghost"), padding:"4px 10px", fontSize:12 }} onClick={onClose}>✕</button>
+        </div>
+        {checkin.codigo_cliente && <div style={{ fontSize:12, color:"#fb923c", fontWeight:600, marginBottom:8 }}>🏷️ {checkin.codigo_cliente}{checkin.nome_cliente ? ` — ${checkin.nome_cliente}` : ""}</div>}
+        {checkin.motivos_visita && <div style={{ fontSize:12, color:"#a5b4fc", marginBottom:12 }}>🎯 {checkin.motivos_visita}</div>}
+        <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.7, whiteSpace:"pre-wrap" }}>{checkin.resumo_visita || "Sem resumo."}</div>
+        <div style={{ marginTop:16, fontSize:11, color:"#4a6080" }}>{checkin.usuario} · {formatDate(checkin.timestamp)} · {checkin.loja || "—"}</div>
+      </div>
+    </div>
+  );
+}
+
 function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
+  const [resumoAberto, setResumoAberto] = useState(null);
   if (loading) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
   if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
 
@@ -630,9 +649,9 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
                     </span>
                   </span>
                 </td>
-                <td style={{ ...tdStyle, maxWidth:220 }}>
+                <td style={{ ...tdStyle, maxWidth:200 }}>
                   {c.resumo_visita
-                    ? <span style={{ color:"#94a3b8", overflow:"hidden", textOverflow:"ellipsis", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{c.resumo_visita}</span>
+                    ? <span onClick={()=>setResumoAberto(c)} style={{ color:"#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block", cursor:"pointer" }} title="Clique para ver tudo">{c.resumo_visita}</span>
                     : <span style={{ color:"#4a6080" }}>—</span>}
                 </td>
                 {isAdmin && (
@@ -646,6 +665,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, loading }) {
         </tbody>
       </table>
     </div>
+    {resumoAberto && <ResumoModal checkin={resumoAberto} onClose={()=>setResumoAberto(null)} />}
   );
 }
 
@@ -1226,6 +1246,8 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
   const [filtroStatus, setFiltroStatus] = useState("pendentes");
   const [filtroDe, setFiltroDe] = useState("");
   const [filtroAte, setFiltroAte] = useState("");
+  const [filtroUsuario, setFiltroUsuario] = useState("Todos");
+  const [usuarios, setUsuarios] = useState([]);
 
   const fetchFollowups = async () => {
     setLoading(true);
@@ -1236,7 +1258,14 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
         headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
       });
-      if (res.ok) setFollowups(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setFollowups(data);
+        if (isAdmin) {
+          const uniqueUsers = [...new Set(data.map(f => f.usuario).filter(Boolean))].sort();
+          setUsuarios(uniqueUsers);
+        }
+      }
     } catch {}
     setLoading(false);
   };
@@ -1268,6 +1297,7 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
     if (filtroStatus === "concluidos" && !f.concluido) return false;
     if (filtroDe && f.data_followup < filtroDe) return false;
     if (filtroAte && f.data_followup > filtroAte) return false;
+    if (filtroUsuario !== "Todos" && f.usuario !== filtroUsuario) return false;
     return true;
   });
 
@@ -1295,6 +1325,15 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
             <option value="concluidos">Concluídos</option>
           </select>
         </div>
+        {isAdmin && usuarios.length > 0 && (
+          <div style={{ flex:"1 1 140px" }}>
+            <label style={labelStyle}>Usuário</label>
+            <select style={{ ...S.input, appearance:"none" }} value={filtroUsuario} onChange={e=>setFiltroUsuario(e.target.value)}>
+              <option value="Todos">Todos</option>
+              {usuarios.map(u=><option key={u}>{u}</option>)}
+            </select>
+          </div>
+        )}
         <div style={{ flex:"1 1 120px" }}>
           <label style={labelStyle}>De</label>
           <input type="date" style={S.input} value={filtroDe} onChange={e=>setFiltroDe(e.target.value)} />
@@ -1303,7 +1342,7 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
           <label style={labelStyle}>Até</label>
           <input type="date" style={S.input} value={filtroAte} onChange={e=>setFiltroAte(e.target.value)} />
         </div>
-        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); }} style={{ padding:"8px 14px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:8, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Limpar</button>
+        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); setFiltroUsuario("Todos"); }} style={{ padding:"8px 14px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:8, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Limpar</button>
       </div>
 
       {loading ? (
