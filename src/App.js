@@ -470,6 +470,7 @@ function CheckInModal({ user, onConfirm, onCancel, loading, gpsEndereco, gpsLat,
 
       </div>
     </div>
+  </div>
   );
 }
 
