@@ -79,36 +79,99 @@ function FollowUpsTab({ user, isAdmin, canDelete, theme }) {
     return <span style={{ fontSize:10, background:"rgba(56,189,248,.1)", color:"#38bdf8", padding:"2px 7px", borderRadius:5, whiteSpace:"nowrap" }}>🕐 Pendente</span>;
   };
 
+  const isMobile = window.innerWidth < 768;
+
+  const filtrosBody = (
+    <>
+      <div style={{ flex: isMobile ? "1 1 100%" : "1 1 130px" }}>
+        <label style={labelStyle}>Status</label>
+        <select style={{ ...S.input, appearance:"none" }} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
+          <option value="todos">Todos</option>
+          <option value="pendentes">Pendentes</option>
+          <option value="concluidos">Concluídos</option>
+        </select>
+      </div>
+      {isAdmin && usuarios.length > 0 && (
+        <div style={{ flex: isMobile ? "1 1 100%" : "1 1 140px" }}>
+          <label style={labelStyle}>Usuário</label>
+          <select style={{ ...S.input, appearance:"none" }} value={filtroUsuario} onChange={e=>setFiltroUsuario(e.target.value)}>
+            <option value="Todos">Todos</option>
+            {usuarios.map(u=><option key={u}>{u}</option>)}
+          </select>
+        </div>
+      )}
+      <div style={{ flex: isMobile ? "1 1 calc(50% - 5px)" : "1 1 120px" }}>
+        <label style={labelStyle}>De</label>
+        <input type="date" style={S.input} value={filtroDe} onChange={e=>setFiltroDe(e.target.value)} />
+      </div>
+      <div style={{ flex: isMobile ? "1 1 calc(50% - 5px)" : "1 1 120px" }}>
+        <label style={labelStyle}>Até</label>
+        <input type="date" style={S.input} value={filtroAte} onChange={e=>setFiltroAte(e.target.value)} />
+      </div>
+      <div style={{ flex: isMobile ? "1 1 100%" : "0 0 auto", display:"flex", justifyContent: isMobile ? "flex-end" : "flex-start" }}>
+        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); setFiltroUsuario("Todos"); }}
+          style={{ padding:"8px 14px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:8, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+          Limpar
+        </button>
+      </div>
+    </>
+  );
+
+  const renderCard = (f) => {
+    const vencido = !f.concluido && f.data_followup < hoje;
+    const isHoje = !f.concluido && f.data_followup === hoje;
+    const borderColor = f.concluido ? "rgba(34,197,94,.2)" : vencido ? "rgba(239,68,68,.3)" : isHoje ? "rgba(251,146,60,.3)" : "#1a2d4a";
+    const bgColor = f.concluido ? "rgba(34,197,94,.04)" : vencido ? "rgba(239,68,68,.04)" : isHoje ? "rgba(251,146,60,.04)" : "rgba(255,255,255,.02)";
+    const accentColor = f.concluido ? "#4ade80" : vencido ? "#f87171" : isHoje ? "#fb923c" : "#38bdf8";
+    return (
+      <div key={f.id} style={{ background:bgColor, border:`1px solid ${borderColor}`, borderRadius:14, padding:"14px 16px", marginBottom:10 }}>
+        {/* Cliente header */}
+        {f.codigo_cliente && (
+          <div style={{ fontSize:13, fontWeight:700, color:"#fb923c", marginBottom:6 }}>
+            🏷️ {f.codigo_cliente}{f.nome_cliente ? ` — ${f.nome_cliente}` : ""}
+          </div>
+        )}
+        {/* Admin: show user */}
+        {isAdmin && f.usuario && (
+          <div style={{ fontSize:11, color:muted, marginBottom:4 }}>👤 {f.usuario}</div>
+        )}
+        {/* Date + status row */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+          <span style={{ fontSize:12, color:muted }}>
+            📅 {new Date(f.data_followup + "T12:00:00").toLocaleDateString("pt-BR")}
+          </span>
+          {statusBadge(f)}
+        </div>
+        {/* Observação */}
+        <div style={{ fontSize:13, color: isLight ? "#0d1b2a" : "#e2e8f0", lineHeight:1.5, marginBottom: f.concluido && !canDelete ? 0 : 10 }}>
+          {f.observacao}
+        </div>
+        {/* Action buttons */}
+        {(!f.concluido || canDelete) && (
+          <div style={{ display:"flex", gap:8 }}>
+            {!f.concluido && (
+              <button onClick={()=>concluir(f.id)}
+                style={{ flex:1, padding:"8px 12px", background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.2)", borderRadius:8, color:"#4ade80", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                ✅ Concluir
+              </button>
+            )}
+            {canDelete && (
+              <button onClick={()=>excluir(f.id)}
+                style={{ padding:"8px 12px", background:"rgba(239,68,68,.08)", border:"1px solid rgba(239,68,68,.2)", borderRadius:8, color:"#f87171", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                🗑️
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="fade-in">
       {/* Filters */}
       <div style={{ ...S.card, padding:14, marginBottom:16, display:"flex", flexWrap:"wrap", gap:10, alignItems:"flex-end" }}>
-        <div style={{ flex:"1 1 130px" }}>
-          <label style={labelStyle}>Status</label>
-          <select style={{ ...S.input, appearance:"none" }} value={filtroStatus} onChange={e=>setFiltroStatus(e.target.value)}>
-            <option value="todos">Todos</option>
-            <option value="pendentes">Pendentes</option>
-            <option value="concluidos">Concluídos</option>
-          </select>
-        </div>
-        {isAdmin && usuarios.length > 0 && (
-          <div style={{ flex:"1 1 140px" }}>
-            <label style={labelStyle}>Usuário</label>
-            <select style={{ ...S.input, appearance:"none" }} value={filtroUsuario} onChange={e=>setFiltroUsuario(e.target.value)}>
-              <option value="Todos">Todos</option>
-              {usuarios.map(u=><option key={u}>{u}</option>)}
-            </select>
-          </div>
-        )}
-        <div style={{ flex:"1 1 120px" }}>
-          <label style={labelStyle}>De</label>
-          <input type="date" style={S.input} value={filtroDe} onChange={e=>setFiltroDe(e.target.value)} />
-        </div>
-        <div style={{ flex:"1 1 120px" }}>
-          <label style={labelStyle}>Até</label>
-          <input type="date" style={S.input} value={filtroAte} onChange={e=>setFiltroAte(e.target.value)} />
-        </div>
-        <button onClick={()=>{ setFiltroStatus("pendentes"); setFiltroDe(""); setFiltroAte(""); setFiltroUsuario("Todos"); }} style={{ padding:"8px 14px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:8, color:"#94a3b8", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>Limpar</button>
+        {filtrosBody}
       </div>
 
       {loading ? (
@@ -118,6 +181,8 @@ function FollowUpsTab({ user, isAdmin, canDelete, theme }) {
           <div style={{ fontSize:32, marginBottom:10 }}>🔔</div>
           <div>Nenhum follow up encontrado</div>
         </div>
+      ) : isMobile ? (
+        <div>{filtered.map(f => renderCard(f))}</div>
       ) : isAdmin ? (
         <div style={{ overflowX:"auto", borderRadius:12, border:`1px solid ${border}` }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>

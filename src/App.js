@@ -53,6 +53,8 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [pendingPos, setPendingPos] = useState(null);
 
+  const [showFiltros, setShowFiltros] = useState(false);
+
   // Follow Up
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [showAnalise, setShowAnalise] = useState(false);
@@ -434,41 +436,64 @@ export default function App() {
         {tab==="historico" && (
           <div className="fade-in">
             {/* Filtros */}
-            <div style={{ ...S.card, padding:16, marginBottom:18, display:"flex", flexWrap:"wrap", gap:12, alignItems:"flex-end" }}>
-              {isDashboard && (
-                <div style={{ flex:"1 1 140px" }}>
-                  <label style={S.label}>Usuário</label>
-                  <select style={{ ...S.input, appearance:"none" }} value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
-                    <option>Todos</option>
-                    {allUsers.map(u=><option key={u}>{u}</option>)}
-                  </select>
+            {(() => {
+              const mob = window.innerWidth < 768;
+              const filtrosAtivos = [filterUser!=="Todos", filterDe!==todayStr(), filterAte!==todayStr(), filterLoja!=="Todas", filterCliente.trim()!==""].filter(Boolean).length;
+              const filtrosBody = (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:12, alignItems:"flex-end" }}>
+                  {isDashboard && (
+                    <div style={{ flex:"1 1 140px" }}>
+                      <label style={S.label}>Usuário</label>
+                      <select style={{ ...S.input, appearance:"none" }} value={filterUser} onChange={e=>setFilterUser(e.target.value)}>
+                        <option>Todos</option>
+                        {allUsers.map(u=><option key={u}>{u}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div style={{ flex:"1 1 130px" }}>
+                    <label style={S.label}>De</label>
+                    <input style={S.input} type="date" value={filterDe} onChange={e=>setFilterDe(e.target.value)} />
+                  </div>
+                  <div style={{ flex:"1 1 130px" }}>
+                    <label style={S.label}>Até</label>
+                    <input style={S.input} type="date" value={filterAte} onChange={e=>setFilterAte(e.target.value)} />
+                  </div>
+                  <div style={{ flex:"1 1 130px" }}>
+                    <label style={S.label}>Loja</label>
+                    <select style={{ ...S.input, appearance:"none" }} value={filterLoja} onChange={e=>setFilterLoja(e.target.value)}>
+                      <option>Todas</option>
+                      {LOJAS.map(l=><option key={l}>{l}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex:"1 1 130px" }}>
+                    <label style={S.label}>Código Cliente</label>
+                    <input style={S.input} placeholder="Buscar..." value={filterCliente} onChange={e=>setFilterCliente(e.target.value)} />
+                  </div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <button className="hvr" style={{ ...S.btn("ghost"), padding:"11px 13px", fontSize:12 }} onClick={fetchCheckins}>🔄</button>
+                    {isDashboard && <button className="hvr" style={{ ...S.btn("success"), padding:"11px 15px", fontSize:12 }} onClick={()=>exportCSV(filtered)} disabled={!filtered.length}>⬇️ CSV</button>}
+                    {isDashboard && <button className="hvr" style={{ ...S.btn("primary"), padding:"11px 15px", fontSize:12, background:"#c0392b", border:"none" }} onClick={()=>setShowAnalise(true)} disabled={!filtered.length}>🧠 Analisar Período</button>}
+                  </div>
                 </div>
-              )}
-              <div style={{ flex:"1 1 130px" }}>
-                <label style={S.label}>De</label>
-                <input style={S.input} type="date" value={filterDe} onChange={e=>setFilterDe(e.target.value)} />
-              </div>
-              <div style={{ flex:"1 1 130px" }}>
-                <label style={S.label}>Até</label>
-                <input style={S.input} type="date" value={filterAte} onChange={e=>setFilterAte(e.target.value)} />
-              </div>
-              <div style={{ flex:"1 1 130px" }}>
-                <label style={S.label}>Loja</label>
-                <select style={{ ...S.input, appearance:"none" }} value={filterLoja} onChange={e=>setFilterLoja(e.target.value)}>
-                  <option>Todas</option>
-                  {LOJAS.map(l=><option key={l}>{l}</option>)}
-                </select>
-              </div>
-              <div style={{ flex:"1 1 130px" }}>
-                <label style={S.label}>Código Cliente</label>
-                <input style={S.input} placeholder="Buscar..." value={filterCliente} onChange={e=>setFilterCliente(e.target.value)} />
-              </div>
-              <div style={{ display:"flex", gap:8 }}>
-                <button className="hvr" style={{ ...S.btn("ghost"), padding:"11px 13px", fontSize:12 }} onClick={fetchCheckins}>🔄</button>
-                {isDashboard && <button className="hvr" style={{ ...S.btn("success"), padding:"11px 15px", fontSize:12 }} onClick={()=>exportCSV(filtered)} disabled={!filtered.length}>⬇️ CSV</button>}
-                {isDashboard && <button className="hvr" style={{ ...S.btn("primary"), padding:"11px 15px", fontSize:12, background:"#c0392b", border:"none" }} onClick={()=>setShowAnalise(true)} disabled={!filtered.length}>🧠 Analisar Período</button>}
-              </div>
-            </div>
+              );
+              if (!mob) return <div style={{ ...S.card, padding:16, marginBottom:18 }}>{filtrosBody}</div>;
+              return (
+                <div style={{ ...S.card, marginBottom:14, overflow:"hidden" }}>
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px" }} onClick={()=>setShowFiltros(v=>!v)}>
+                    <span style={{ fontSize:13, fontWeight:600, color:"#e2e8f0" }}>
+                      🔍 Filtros{filtrosAtivos > 0 ? ` (${filtrosAtivos})` : ""}
+                    </span>
+                    <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <span style={{ fontSize:12, color:"#4a6080" }}>{filtered.length} check-in{filtered.length!==1?"s":""}</span>
+                      <span style={{ color:"#4a6080", fontSize:14 }}>{showFiltros ? "▲" : "▼"}</span>
+                    </div>
+                  </div>
+                  <div style={{ maxHeight: showFiltros ? 600 : 0, overflow:"hidden", transition:"max-height .3s ease", padding: showFiltros ? "0 16px 16px" : "0 16px" }}>
+                    {filtrosBody}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Totalizador */}
             <div style={{ display:"flex", gap:12, marginBottom:16, flexWrap:"wrap" }}>
