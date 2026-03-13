@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import S from "./utils/styles";
 import { SUPABASE_URL, SUPABASE_KEY, LOJAS, todayStr } from "./utils/constants";
 import { api, reverseGeocode, exportCSV, formatDate } from "./utils/helpers";
-import MobileOnly from "./components/MobileOnly";
 import LoginScreen from "./components/LoginScreen";
 import CheckInModal from "./components/CheckInModal";
 import MapView from "./components/MapView";
@@ -25,15 +24,7 @@ const isMobile = () => {
 
 export default function App() {
   const [user, setUser] = useState(() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem("checkpoint_user"));
-      // On desktop, only restore session if user is admin
-      if (stored && !isMobile() && stored.role !== "admin" && stored.role !== "gerente" && stored.role !== "gerente_loja") {
-        localStorage.removeItem("checkpoint_user");
-        return null;
-      }
-      return stored;
-    } catch { return null; }
+    try { return JSON.parse(localStorage.getItem("checkpoint_user")); } catch { return null; }
   });
   const [tab, setTab] = useState("checkin");
   const [checkins, setCheckins] = useState([]);
@@ -304,8 +295,21 @@ export default function App() {
   useEffect(() => { if (isDashboard && tab === "checkin") setTab("historico"); }, [isDashboard]);
 
   const isMob = isMobile();
-  if (!isMob && !isDashboard) return <MobileOnly onAdminLogin={handleLogin} />;
   if (!user) return <LoginScreen onLogin={handleLogin} />;
+  if (user.role === "user" && !isMob) return (
+    <div style={{ minHeight:"100vh", background:"#0a1628", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans', sans-serif", color:"#fff" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap'); *{box-sizing:border-box;margin:0;padding:0}`}</style>
+      <img src="/logo.png" alt="HM Promotor" style={{ height:60, marginBottom:32 }} onError={e=>{ e.target.style.display="none"; }} />
+      <div style={{ fontSize:48, marginBottom:16 }}>📱</div>
+      <div style={{ fontSize:20, fontWeight:600, marginBottom:8 }}>Acesse pelo celular</div>
+      <div style={{ fontSize:14, color:"#4a6080", marginBottom:32, textAlign:"center", maxWidth:280 }}>
+        O HM Promotor é otimizado para uso em dispositivos móveis.
+      </div>
+      <button onClick={handleLogout} style={{ background:"none", border:"1px solid #1a2d4a", borderRadius:8, padding:"10px 24px", color:"#4a6080", cursor:"pointer", fontSize:14, fontFamily:"inherit" }}>
+        Sair
+      </button>
+    </div>
+  );
 
   return (
     <div style={{ ...S.page, ...(theme === "light" ? { background:"#f0f4f8", color:"#0f1923" } : {}) }}>

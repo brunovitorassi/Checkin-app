@@ -18,7 +18,7 @@ function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:24, background:"linear-gradient(160deg, #c0392b 0%, #1a237e 100%)", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:24, background:"#0a1628", fontFamily:"'DM Sans','Segoe UI',sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
@@ -26,19 +26,11 @@ function LoginScreen({ onLogin }) {
         .hvr:hover{opacity:.85;transform:translateY(-1px)} .hvr:active{transform:scale(.97)}
         .fade-in{animation:fi .4s ease} @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
-      <div className="fade-in" style={{ width:"100%", maxWidth:400 }}>
-        <div style={{ textAlign:"center", marginBottom:32, paddingTop:48 }}>
-          <img
-            src="/logo.png"
-            alt="Heidermaq"
-            width={200}
-            style={{ display:"block", margin:"0 auto 20px" }}
-            onError={e => { e.target.style.display = "none"; }}
-          />
-          <h1 style={{ fontSize:28, fontWeight:800, color:"#fff", marginBottom:6 }}>HM Promotor</h1>
-          <p style={{ fontSize:14, color:"rgba(255,255,255,0.7)" }}>Heidermaq Comércio de Auto Peças</p>
-        </div>
-        <div style={{ ...S.card, padding:28, display:"flex", flexDirection:"column", gap:18 }}>
+      <div className="fade-in" style={{ width:"100%", maxWidth:380 }}>
+        <div style={{ ...S.card, padding:32, display:"flex", flexDirection:"column", gap:18 }}>
+          <div style={{ textAlign:"center", marginBottom:4 }}>
+            <img src="/logo.png" alt="Heidermaq" width={180} style={{ display:"block", margin:"0 auto" }} onError={e=>{ e.target.style.display="none"; }} />
+          </div>
           <div><label style={S.label}>E-mail</label><input style={S.input} type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
           <div><label style={S.label}>Senha</label><input style={S.input} type="password" placeholder="••••••••" value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
           {erro && <div style={{ ...S.tag("red"), padding:"10px 14px", borderRadius:10, fontSize:13 }}>⚠️ {erro}</div>}
