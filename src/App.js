@@ -14,6 +14,7 @@ import ClienteSearch from "./components/ClienteSearch";
 import FollowUpsTab from "./components/FollowUpsTab";
 import SolicitacoesTab from "./components/SolicitacoesTab";
 import SolicitacaoPopup from "./components/SolicitacaoPopup";
+import AnaliseModal from "./components/AnaliseModal";
 
 // ─── MOBILE GUARD ─────────────────────────────────────────────────────────────
 const isMobile = () => {
@@ -53,6 +54,7 @@ export default function App() {
 
   // Follow Up
   const [showFollowUp, setShowFollowUp] = useState(false);
+  const [showAnalise, setShowAnalise] = useState(false);
   const [lastCheckin, setLastCheckin] = useState(null);
   const [followupPopup, setFollowupPopup] = useState([]);
 
@@ -295,6 +297,7 @@ export default function App() {
       {showFollowUp && <FollowUpModal user={user} checkin={lastCheckin} onSave={()=>{ setShowFollowUp(false); setStatus({ type:"success", msg:"🔔 Follow up agendado!" }); setTimeout(()=>setStatus(null),3000); }} onSkip={()=>setShowFollowUp(false)} />}
       {followupPopup.length > 0 && <FollowUpPopup followups={followupPopup} onConcluir={concluirFollowUp} onFechar={()=>setFollowupPopup([])} />}
       {user?.role === "user" && <SolicitacaoPopup user={user} onClose={() => {}} />}
+      {showAnalise && <AnaliseModal checkins={filtered} onClose={() => setShowAnalise(false)} />}
 
       {/* Header */}
       <div style={{ background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
@@ -429,6 +432,7 @@ export default function App() {
               <div style={{ display:"flex", gap:8 }}>
                 <button className="hvr" style={{ ...S.btn("ghost"), padding:"11px 13px", fontSize:12 }} onClick={fetchCheckins}>🔄</button>
                 {isDashboard && <button className="hvr" style={{ ...S.btn("success"), padding:"11px 15px", fontSize:12 }} onClick={()=>exportCSV(filtered)} disabled={!filtered.length}>⬇️ CSV</button>}
+                {isDashboard && <button className="hvr" style={{ ...S.btn("primary"), padding:"11px 15px", fontSize:12, background:"#c0392b", border:"none" }} onClick={()=>setShowAnalise(true)} disabled={!filtered.length}>🧠 Analisar Período</button>}
               </div>
             </div>
 
