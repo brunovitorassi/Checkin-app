@@ -84,7 +84,8 @@ export default function App() {
   const fetchCheckins = useCallback(async () => {
     if (!user) return;
     try {
-      const lojas = Array.isArray(user.loja) ? user.loja : (user.loja ? [user.loja] : []);
+      const parseLoja = (v) => { if (!v) return []; if (Array.isArray(v)) return v.flat(); try { const p = JSON.parse(v); return Array.isArray(p) ? p.flat().map(x => typeof x === "string" && x.startsWith("[") ? JSON.parse(x)[0] : x) : [v]; } catch { return [v]; } };
+      const lojas = parseLoja(user.loja);
       const path = isGerenteLoja && lojas.length > 0
         ? `/checkins?loja=in.(${lojas.map(l=>`"${l}"`).join(",")})&order=timestamp.desc&limit=500`
         : isDashboard
