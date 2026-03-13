@@ -129,10 +129,26 @@ function ClienteSearch({ isDashboard, user }) {
       {erro && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:10, padding:"10px 14px", color:"#f87171", fontSize:13, marginBottom:16 }}>⚠️ {erro}</div>}
 
       {/* Results */}
-      {cliente && (
+      {cliente && (() => {
+        const ativo     = cliente.ativo     ?? cliente._raw?.ativo;
+        const bloqueado = cliente.bloqueado ?? cliente._raw?.bloqueado;
+        const clienteBloqueado   = bloqueado === true;
+        const clienteInativo     = ativo === false;
+        const clienteComProblema = clienteBloqueado || clienteInativo;
+        const badgeStyle = (ok) => ({
+          background: ok ? "rgba(34,197,94,0.15)"  : "rgba(239,68,68,0.2)",
+          color:      ok ? "#22c55e"                : "#ef4444",
+          border:     ok ? "1px solid rgba(34,197,94,0.3)" : "1px solid rgba(239,68,68,0.4)",
+          borderRadius:20, padding:"2px 10px", fontSize:11, fontWeight:700,
+        });
+        return (
         <div>
           {/* Client name header */}
-          <div style={{ background:"linear-gradient(135deg,rgba(14,165,233,.1),rgba(99,102,241,.1))", border:"1px solid rgba(14,165,233,.2)", borderRadius:14, padding:"16px 20px", marginBottom:16, display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{
+            background: clienteComProblema ? "rgba(239,68,68,0.12)" : "linear-gradient(135deg,rgba(14,165,233,.1),rgba(99,102,241,.1))",
+            border: clienteComProblema ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(14,165,233,.2)",
+            borderRadius:14, padding:"16px 20px", marginBottom:16, display:"flex", alignItems:"center", gap:14,
+          }}>
             <div style={{ width:48, height:48, borderRadius:"50%", background:`hsl(${(cliente.nome||"").charCodeAt(0)*7%360},55%,30%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, fontWeight:700, color:"#fff", flexShrink:0 }}>
               {(cliente.nome||"?").split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
             </div>
@@ -140,16 +156,9 @@ function ClienteSearch({ isDashboard, user }) {
               <div style={{ fontWeight:700, fontSize:17 }}>{cliente.nome}</div>
               <div style={{ fontSize:12, color:"#4a6080", marginTop:3 }}>Código: {codigo} {cliente.loja && <span style={{ ...S.tag("purple"), fontSize:11, marginLeft:6 }}>🏪 {cliente.loja}</span>}</div>
               <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
-                {(() => {
-                  const ativo     = cliente.ativo     ?? cliente._raw?.ativo;
-                  const bloqueado = cliente.bloqueado ?? cliente._raw?.bloqueado;
-                  const badgeBase = { display:"inline-flex", alignItems:"center", gap:4, padding:"3px 10px", borderRadius:20, fontSize:12, fontWeight:600 };
-                  return (<>
-                    {ativo === true  && <span style={{ ...badgeBase, background:"rgba(34,197,94,0.15)",  color:"#22c55e", border:"1px solid rgba(34,197,94,0.3)"  }}>● Ativo</span>}
-                    {ativo === false && <span style={{ ...badgeBase, background:"rgba(239,68,68,0.15)", color:"#ef4444", border:"1px solid rgba(239,68,68,0.3)" }}>● Inativo</span>}
-                    {bloqueado === true && <span style={{ ...badgeBase, background:"rgba(239,68,68,0.15)", color:"#ef4444", border:"1px solid rgba(239,68,68,0.3)" }}>🔒 Bloqueado</span>}
-                  </>);
-                })()}
+                {!clienteInativo && !clienteBloqueado && <span style={badgeStyle(true)}>● Ativo</span>}
+                {clienteInativo   && <span style={badgeStyle(false)}>● Inativo</span>}
+                {clienteBloqueado && <span style={badgeStyle(false)}>🔒 Bloqueado</span>}
               </div>
             </div>
           </div>
@@ -300,7 +309,8 @@ function ClienteSearch({ isDashboard, user }) {
 
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {!cliente && !buscando && !erro && (
         <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}>
