@@ -135,7 +135,7 @@ export default function App() {
   };
 
   // Confirma o check-in com os dados do modal
-  const confirmarCheckIn = async ({ codigo_cliente, nome_cliente, resumo_visita, motivos_visita, loja, endereco_status }) => {
+  const confirmarCheckIn = async ({ codigo_cliente, nome_cliente, resumo_visita, motivos_visita, loja, endereco_status, foto_url }) => {
     setLoading(true);
     // Guard: pendingPos must exist
     if (!pendingPos) {
@@ -160,7 +160,7 @@ export default function App() {
     }
     try {
       const resumo_visita_truncado = (resumo_visita || "").slice(0, 1000);
-      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, nome_cliente, motivos_visita: motivos_visita || null, resumo_visita: resumo_visita_truncado, loja, endereco_status };
+      const payload = { usuario: user.nome, endereco: pendingPos.endereco, lat: pendingPos.lat, lng: pendingPos.lng, codigo_cliente, nome_cliente, motivos_visita: motivos_visita || null, resumo_visita: resumo_visita_truncado, loja, endereco_status, foto_url: foto_url || null };
 
       // Use fetch directly to have full control over the response
       const res = await fetch(`${SUPABASE_URL}/rest/v1/checkins`, {
