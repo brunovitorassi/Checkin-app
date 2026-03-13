@@ -35,7 +35,7 @@ function ClienteSearch({ isDashboard, user }) {
       const doisMesesAtras = new Date(hoje); doisMesesAtras.setMonth(doisMesesAtras.getMonth()-2);
       const dataInicial = doisMesesAtras.toISOString().split("T")[0];
 
-      const [resCliente, resFin, resHist] = await Promise.all([
+      const [settledCliente, settledFin, settledHist] = await Promise.allSettled([
         fetch(`${EDGE_FUNCTION_URL}?${paramKey}=${paramVal}`, {
           headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         }),
@@ -47,6 +47,8 @@ function ClienteSearch({ isDashboard, user }) {
         }),
       ]);
 
+      if (settledCliente.status === "rejected") { setErro("Erro ao conectar com o servidor. Tente novamente."); setBuscando(false); return; }
+      const resCliente = settledCliente.value;
       const cData = await resCliente.json();
       if (!cData.nome) { setErro("Cliente não encontrado."); setBuscando(false); return; }
       console.log("🔍 RAW CLIENTE:", JSON.stringify(cData._raw || cData, null, 2));
@@ -59,19 +61,22 @@ function ClienteSearch({ isDashboard, user }) {
         } catch { /* silent */ }
       }
 
-      if (resFin.ok) {
-        const fData = await resFin.json();
-        const itens = Array.isArray(fData) ? fData : (fData.itens || []);
-        const agora = new Date();
-        const vencidas = itens.filter(p => new Date(p.dataVencimento) < agora);
-        const aVencer = itens.filter(p => new Date(p.dataVencimento) >= agora);
-        const totalAberto = itens.reduce((s,p) => s + (p.valorParcela||0), 0);
-        const totalVencido = vencidas.reduce((s,p) => s + (p.valorParcela||0), 0);
-        setFinanceiro({ itens, vencidas, aVencer, totalAberto, totalVencido });
+      if (settledFin.status === "fulfilled" && settledFin.value.ok) {
+        try {
+          const fData = await settledFin.value.json();
+          const itens = Array.isArray(fData) ? fData : (fData.itens || []);
+          const agora = new Date();
+          const vencidas = itens.filter(p => new Date(p.dataVencimento) < agora);
+          const aVencer = itens.filter(p => new Date(p.dataVencimento) >= agora);
+          const totalAberto = itens.reduce((s,p) => s + (p.valorParcela||0), 0);
+          const totalVencido = vencidas.reduce((s,p) => s + (p.valorParcela||0), 0);
+          setFinanceiro({ itens, vencidas, aVencer, totalAberto, totalVencido });
+        } catch { /* silent */ }
       }
 
-      if (resHist.ok) {
-        const hData = await resHist.json();
+      if (settledHist.status === "fulfilled" && settledHist.value.ok) {
+        try {
+        const hData = await settledHist.value.json();
         const itens = Array.isArray(hData) ? hData : (hData.itens || []);
         // Group by week
         const semanas = {};
@@ -98,6 +103,7 @@ function ClienteSearch({ isDashboard, user }) {
             fim: new Date(s.inicio.getTime() + 6*24*60*60*1000)
           }));
         setHistorico(semanasArr);
+        } catch { /* silent */ }
       }
     } catch(e) { setErro("Erro ao buscar. Tente novamente."); }
     setBuscando(false);
