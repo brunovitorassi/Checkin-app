@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import S from "../utils/styles";
-import { EDGE_FUNCTION_URL, TABELAS_PRECO } from "../utils/constants";
+import { EDGE_FUNCTION_URL, TABELAS_PRECO, SUPABASE_KEY } from "../utils/constants";
 import { formatCurrency, api } from "../utils/helpers";
 import SolicitacaoVisitaModal from "./SolicitacaoVisitaModal";
 
@@ -36,7 +36,9 @@ function ClienteSearch({ isDashboard, user }) {
       const dataInicial = doisMesesAtras.toISOString().split("T")[0];
 
       const [resCliente, resFin, resHist] = await Promise.all([
-        fetch(`${EDGE_FUNCTION_URL}?${paramKey}=${paramVal}`),
+        fetch(`${EDGE_FUNCTION_URL}?${paramKey}=${paramVal}`, {
+          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+        }),
         fetch(`https://portal.heidermaq.com.br/api/Clientes/FinanceiroEmAberto?${paramKey}=${paramVal}&registrosPorPagina=100&pagina=1`, {
           headers: { "Authorization": "3dfdlJsW4yM3ltEuhevqCizMnRvkr5Lc9gyT27O4dx+TclfFHZE5n0rH07PrdS+WST6yGI8bc7p26jLWU80ZNQ==", "Accept": "application/json" }
         }),
