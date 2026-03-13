@@ -58,9 +58,16 @@ export default function App() {
   const [lastCheckin, setLastCheckin] = useState(null);
   const [followupPopup, setFollowupPopup] = useState([]);
 
+  const [theme, setTheme] = useState(() => localStorage.getItem("hm_theme") || "dark");
+
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
   const isDashboard = isAdmin || isGerente;
+
+  useEffect(() => {
+    document.body.setAttribute("data-theme", theme);
+    localStorage.setItem("hm_theme", theme);
+  }, [theme]);
 
   const handleLogin = (u) => { localStorage.setItem("checkpoint_user", JSON.stringify(u)); setUser(u); };
   const handleLogout = () => {
@@ -279,7 +286,7 @@ export default function App() {
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
   return (
-    <div style={S.page}>
+    <div style={{ ...S.page, background: theme === "light" ? "#f0f4f8" : undefined, color: theme === "light" ? "#0f1923" : undefined }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
@@ -291,6 +298,9 @@ export default function App() {
         .sdot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:blink 2s infinite;display:inline-block}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
         input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5)}
+        body[data-theme="light"] { --bg:#f0f4f8; --surface:#ffffff; --border:#dde3ea; --text:#0f1923; --text-muted:#5a7190; }
+        body[data-theme="light"] .tab-btn { color:#5a7190 !important; }
+        body[data-theme="light"] input, body[data-theme="light"] select { background:#fff !important; color:#0f1923 !important; border-color:#dde3ea !important; }
       `}</style>
 
       {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} gpsEndereco={pendingPos?.endereco||""} gpsLat={pendingPos?.lat} gpsLng={pendingPos?.lng} />}
@@ -300,18 +310,28 @@ export default function App() {
       {showAnalise && <AnaliseModal checkins={filtered} onClose={() => setShowAnalise(false)} />}
 
       {/* Header */}
-      <div style={{ background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+      <div style={{ background: theme === "light" ? "rgba(0,0,0,.04)" : "rgba(255,255,255,.03)", borderBottom: theme === "light" ? "1px solid #dde3ea" : "1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:34, height:34, borderRadius:"50%", background:"#c0392b", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>📍</div>
+          <img src="/logo.png" alt="HM Promotor" style={{ height:36, width:"auto", objectFit:"contain" }} />
           <div>
             <div style={{ fontFamily:"'Space Mono',monospace", fontSize:14, fontWeight:700 }}>
-              <span style={{ color:"#fff" }}>HM</span><span style={{ color:"#c0392b" }}> Promotor</span>
+              <span style={{ color: theme === "light" ? "#0f1923" : "#fff" }}>HM</span><span style={{ color:"#c0392b" }}> Promotor</span>
             </div>
             <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5, marginTop:1 }}><span className="sdot"></span> tempo real</div>
           </div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
+          {isDashboard && (
+            <button
+              className="hvr"
+              onClick={() => setTheme(t => t === "dark" ? "light" : "dark")}
+              style={{ background:"none", border:"1px solid rgba(255,255,255,.15)", borderRadius:8, padding:"6px 10px", cursor:"pointer", fontSize:16, color:"#fff" }}
+              title="Alternar tema"
+            >
+              {theme === "dark" ? "☀️" : "🌙"}
+            </button>
+          )}
           <button className="hvr" style={{ ...S.btn("ghost"), padding:"7px 12px", fontSize:12 }} onClick={handleLogout}>Sair</button>
         </div>
       </div>
@@ -333,7 +353,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{ margin:"0 24px 28px", ...S.card, borderRadius:"0 12px 12px 12px", padding:24, minHeight:420 }}>
+      <div style={{ margin:"0 24px 28px", ...S.card, borderRadius:"0 12px 12px 12px", padding:24, minHeight:420, background: theme === "light" ? "#ffffff" : undefined }}>
 
         {/* CHECK-IN */}
         {tab==="checkin" && (
@@ -461,7 +481,7 @@ export default function App() {
               )}
             </div>
 
-            <HistoricoList checkins={filtered} onDelete={handleDeleteCheckin} isAdmin={isAdmin} isDashboard={isDashboard} loading={fetching} />
+            <HistoricoList checkins={filtered} onDelete={handleDeleteCheckin} isAdmin={isAdmin} isDashboard={isDashboard} loading={fetching} theme={theme} />
           </div>
         )}
 
