@@ -27,12 +27,12 @@ function LoginScreen({ onLogin }) {
         .fade-in{animation:fi .4s ease} @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
       <div className="fade-in" style={{ width:"100%", maxWidth:380, position:"relative", zIndex:1 }}>
-        <div style={{ ...S.card, padding:32, display:"flex", flexDirection:"column", gap:18 }}>
+        <div style={{ ...S.card, padding:32, display:"flex", flexDirection:"column", gap:18, background:"rgba(255,255,255,0.92)", backdropFilter:"blur(8px)", border:"none", boxShadow:"0 8px 40px rgba(0,0,0,0.18)" }}>
           <div style={{ textAlign:"center", marginBottom:4 }}>
             <img src="/logo.png" alt="Heidermaq" width={180} style={{ display:"block", margin:"0 auto" }} onError={e=>{ e.target.style.display="none"; }} />
           </div>
-          <div><label style={S.label}>E-mail</label><input style={S.input} type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
-          <div><label style={S.label}>Senha</label><input style={S.input} type="password" placeholder="••••••••" value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
+          <div><label style={{ ...S.label, color:"#374151" }}>E-mail</label><input style={{ ...S.input, background:"#f9fafb", border:"1px solid #d1d5db", color:"#111827" }} type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
+          <div><label style={{ ...S.label, color:"#374151" }}>Senha</label><input style={{ ...S.input, background:"#f9fafb", border:"1px solid #d1d5db", color:"#111827" }} type="password" placeholder="••••••••" value={senha} onChange={e=>setSenha(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
           {erro && <div style={{ ...S.tag("red"), padding:"10px 14px", borderRadius:10, fontSize:13 }}>⚠️ {erro}</div>}
           <button className="hvr" style={{ ...S.btn("primary"), padding:14, fontSize:15, marginTop:4, background:"#c0392b", border:"none" }} onClick={handleLogin} disabled={loading}>{loading?"Entrando...":"Entrar →"}</button>
         </div>
