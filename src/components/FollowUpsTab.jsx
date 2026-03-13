@@ -11,6 +11,7 @@ function FollowUpsTab({ user, isAdmin, canDelete, theme, userLoja }) {
   const [filtroAte, setFiltroAte] = useState("");
   const [filtroUsuario, setFiltroUsuario] = useState("Todos");
   const [usuarios, setUsuarios] = useState([]);
+  const [showFiltros, setShowFiltros] = useState(false);
 
   const fetchFollowups = async () => {
     setLoading(true);
@@ -170,9 +171,26 @@ function FollowUpsTab({ user, isAdmin, canDelete, theme, userLoja }) {
   return (
     <div className="fade-in">
       {/* Filters */}
-      <div style={{ ...S.card, padding:14, marginBottom:16, display:"flex", flexWrap:"wrap", gap:10, alignItems:"flex-end" }}>
-        {filtrosBody}
-      </div>
+      {isMobile ? (
+        <div style={{ ...S.card, marginBottom:14, overflow:"hidden" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"12px 16px", cursor:"pointer" }} onClick={()=>setShowFiltros(v=>!v)}>
+            <span style={{ fontSize:13, fontWeight:600, color:"#e2e8f0" }}>
+              🔍 Filtros{[filtroStatus!=="pendentes", filtroDe, filtroAte, filtroUsuario!=="Todos"].filter(Boolean).length > 0 ? ` (${[filtroStatus!=="pendentes", filtroDe, filtroAte, filtroUsuario!=="Todos"].filter(Boolean).length})` : ""}
+            </span>
+            <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+              <span style={{ fontSize:12, color:"#4a6080" }}>{filtered.length} follow up{filtered.length!==1?"s":""}</span>
+              <span style={{ color:"#4a6080", fontSize:14 }}>{showFiltros ? "▲" : "▼"}</span>
+            </div>
+          </div>
+          <div style={{ maxHeight: showFiltros ? 600 : 0, overflow:"hidden", transition:"max-height .3s ease", padding: showFiltros ? "0 16px 16px" : "0 16px" }}>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:10, alignItems:"flex-end" }}>{filtrosBody}</div>
+          </div>
+        </div>
+      ) : (
+        <div style={{ ...S.card, padding:14, marginBottom:16, display:"flex", flexWrap:"wrap", gap:10, alignItems:"flex-end" }}>
+          {filtrosBody}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign:"center", padding:40, color:muted }}>Carregando...</div>

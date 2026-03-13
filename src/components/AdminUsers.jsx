@@ -57,6 +57,7 @@ function AdminUsers({ currentUser }) {
   };
 
   const labelStyle = { fontSize:11, fontWeight:700, color:"#4a6080", letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:6 };
+  const isMob = window.innerWidth < 768;
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
@@ -64,7 +65,7 @@ function AdminUsers({ currentUser }) {
       {/* CREATE FORM */}
       <div style={{ ...S.card, padding:20 }}>
         <div style={{ fontWeight:700, fontSize:14, marginBottom:16, color:"#38bdf8" }}>➕ Novo Usuário</div>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+        <div style={{ display:"grid", gridTemplateColumns: isMob ? "1fr" : "1fr 1fr", gap:12, marginBottom:12 }}>
           <div><label style={S.label}>Nome</label><input style={S.input} placeholder="Nome completo" value={form.nome} onChange={e=>setForm({...form,nome:e.target.value})} /></div>
           <div><label style={S.label}>E-mail</label><input style={S.input} type="email" placeholder="email@exemplo.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} /></div>
           <div><label style={S.label}>Senha</label><input style={S.input} placeholder="Senha inicial" value={form.senha} onChange={e=>setForm({...form,senha:e.target.value})} /></div>
@@ -110,7 +111,7 @@ function AdminUsers({ currentUser }) {
                   /* ── EDIT MODE ── */
                   <div>
                     <div style={{ fontWeight:700, fontSize:13, color:"#38bdf8", marginBottom:14 }}>✏️ Editando: {u.nome}</div>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+                    <div style={{ display:"grid", gridTemplateColumns: isMob ? "1fr" : "1fr 1fr", gap:12, marginBottom:12 }}>
                       <div>
                         <label style={labelStyle}>Nome</label>
                         <input style={S.input} value={editForm.nome} onChange={e=>setEditForm({...editForm,nome:e.target.value})} />
@@ -157,7 +158,7 @@ function AdminUsers({ currentUser }) {
                   </div>
                 ) : (
                   /* ── VIEW MODE ── */
-                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+                  <div style={{ display:"flex", flexDirection: isMob ? "column" : "row", alignItems: isMob ? "flex-start" : "center", justifyContent:"space-between", gap: isMob ? 10 : 12 }}>
                     <div style={{ display:"flex", alignItems:"center", gap:12 }}>
                       <div style={{ width:38, height:38, borderRadius:"50%", background:`hsl(${u.nome.charCodeAt(0)*7%360},55%,30%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, flexShrink:0 }}>
                         {u.nome.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
@@ -167,12 +168,14 @@ function AdminUsers({ currentUser }) {
                         <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>{u.email}</div>
                       </div>
                     </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, ...(isMob ? { width:"100%", justifyContent:"space-between" } : { flexShrink:0 }) }}>
                       <span style={S.tag(u.role==="admin"?"purple":u.role==="gerente"||u.role==="gerente_loja"?"orange":"blue")}>
                         {u.role==="admin"?"👑 Admin":u.role==="gerente"?"🏢 Gerente":u.role==="gerente_loja"?`🏪 ${Array.isArray(u.loja)&&u.loja.length?u.loja.join(", "):"Gerente Loja"}`:"👤 Usuário"}
                       </span>
-                      <button style={{ ...S.btn("ghost"), padding:"5px 12px", fontSize:12, color:"#38bdf8", borderColor:"rgba(56,189,248,.3)" }} onClick={()=>startEdit(u)}>✏️ Editar</button>
-                      {u.id!==currentUser.id && <button style={{ ...S.btn("danger"), padding:"5px 11px", fontSize:12 }} onClick={()=>deleteUser(u.id)}>Excluir</button>}
+                      <div style={{ display:"flex", gap:8 }}>
+                        <button style={{ ...S.btn("ghost"), padding:"5px 12px", fontSize:12, color:"#38bdf8", borderColor:"rgba(56,189,248,.3)" }} onClick={()=>startEdit(u)}>✏️ Editar</button>
+                        {u.id!==currentUser.id && <button style={{ ...S.btn("danger"), padding:"5px 11px", fontSize:12 }} onClick={()=>deleteUser(u.id)}>Excluir</button>}
+                      </div>
                     </div>
                   </div>
                 )}
