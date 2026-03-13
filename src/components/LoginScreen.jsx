@@ -10,7 +10,7 @@ function LoginScreen({ onLogin }) {
     if (!email||!senha) { setErro("Preencha todos os campos."); return; }
     setLoading(true); setErro("");
     try {
-      const data = await api(`/app_users?email=eq.${encodeURIComponent(email)}&senha=eq.${encodeURIComponent(senha)}&select=id,nome,email,role`);
+      const data = await api(`/app_users?email=eq.${encodeURIComponent(email)}&senha=eq.${encodeURIComponent(senha)}&select=*`);
       if (!data.length) { setErro("E-mail ou senha incorretos."); setLoading(false); return; }
       onLogin(data[0]);
     } catch { setErro("Erro de conexão. Tente novamente."); }

@@ -28,7 +28,7 @@ export default function App() {
     try {
       const stored = JSON.parse(localStorage.getItem("checkpoint_user"));
       // On desktop, only restore session if user is admin
-      if (stored && !isMobile() && stored.role !== "admin" && stored.role !== "gerente") {
+      if (stored && !isMobile() && stored.role !== "admin" && stored.role !== "gerente" && stored.role !== "gerente_loja") {
         localStorage.removeItem("checkpoint_user");
         return null;
       }
@@ -66,7 +66,8 @@ export default function App() {
 
   const isAdmin = user?.role === "admin";
   const isGerente = user?.role === "gerente";
-  const isDashboard = isAdmin || isGerente;
+  const isGerenteLoja = user?.role === "gerente_loja";
+  const isDashboard = isAdmin || isGerente || isGerenteLoja;
 
   useEffect(() => {
     document.body.setAttribute("data-theme", theme);
@@ -83,12 +84,14 @@ export default function App() {
   const fetchCheckins = useCallback(async () => {
     if (!user) return;
     try {
-      const path = isDashboard
+      const path = isGerenteLoja
+        ? `/checkins?loja=eq.${encodeURIComponent(user.loja)}&order=timestamp.desc&limit=500`
+        : isDashboard
         ? "/checkins?order=timestamp.desc&limit=500"
         : `/checkins?usuario=eq.${encodeURIComponent(user.nome)}&order=timestamp.desc&limit=200`;
       setCheckins(await api(path));
     } catch(e) { console.error(e); } finally { setFetching(false); }
-  }, [user, isDashboard]);
+  }, [user, isDashboard, isGerenteLoja]);
 
   const fetchUsers = useCallback(async () => {
     if (!isDashboard) return;
@@ -292,7 +295,7 @@ export default function App() {
     { id:"historico",  label:"Histórico",  icon:"📋" },
     { id:"clientes",   label:"Clientes",   icon:"🔍" },
     { id:"followups",  label:"Follow Ups", icon:"🔔" },
-    ...(!isDashboard ? [{ id:"solicitacoes", label:"Solicitações", icon:"📋" }] : []),
+    ...(!isDashboard || isGerenteLoja ? [{ id:"solicitacoes", label:"Solicitações", icon:"📋" }] : []),
     ...(isDashboard ? [{ id:"mapa", label:"Mapa", icon:"🗺️" }] : []),
     ...(isAdmin ? [{ id:"usuarios", label:"Usuários", icon:"👥" }] : []),
   ];
@@ -338,6 +341,11 @@ export default function App() {
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
+          {isGerenteLoja && user.loja && (
+            <span style={{ fontSize:11, fontWeight:600, background:"rgba(251,146,60,.15)", color:"#fb923c", padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap" }}>
+              🏪 {user.loja}
+            </span>
+          )}
           {isDashboard && (
             <button
               className="hvr"
@@ -575,7 +583,7 @@ export default function App() {
 
         {/* FOLLOW UPS */}
         {tab==="followups" && (
-          <div className="fade-in"><FollowUpsTab user={user} isAdmin={isDashboard} canDelete={isAdmin} theme={theme} /></div>
+          <div className="fade-in"><FollowUpsTab user={user} isAdmin={isDashboard} canDelete={isAdmin} theme={theme} userLoja={isGerenteLoja ? user.loja : null} /></div>
         )}
 
         {/* SOLICITAÇÕES */}

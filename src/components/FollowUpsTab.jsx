@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import S from "../utils/styles";
 import { SUPABASE_URL, SUPABASE_KEY } from "../utils/constants";
 
-function FollowUpsTab({ user, isAdmin, canDelete, theme }) {
+function FollowUpsTab({ user, isAdmin, canDelete, theme, userLoja }) {
   const isLight = theme === "light";
   const [followups, setFollowups] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ function FollowUpsTab({ user, isAdmin, canDelete, theme }) {
     setLoading(true);
     try {
       let path = isAdmin
-        ? `/followups?order=data_followup.asc`
+        ? `/followups?order=data_followup.asc${userLoja ? `&loja=eq.${encodeURIComponent(userLoja)}` : ""}`
         : `/followups?usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
       const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
         headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import S from "../utils/styles";
 import { api } from "../utils/helpers";
+import { LOJAS } from "../utils/constants";
 
 function AdminUsers({ currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ nome:"", email:"", senha:"", role:"user" });
+  const [form, setForm] = useState({ nome:"", email:"", senha:"", role:"user", loja:"" });
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [erro, setErro] = useState("");
@@ -13,31 +14,35 @@ function AdminUsers({ currentUser }) {
 
   const fetchUsers = async () => {
     setLoading(true);
-    try { setUsers(await api("/app_users?order=created_at.asc&select=id,nome,email,role,created_at")); } catch {}
+    try { setUsers(await api("/app_users?order=created_at.asc&select=id,nome,email,role,loja,created_at")); } catch {}
     setLoading(false);
   };
   useEffect(() => { fetchUsers(); }, []);
 
   const addUser = async () => {
     if (!form.nome||!form.email||!form.senha) { setErro("Preencha todos os campos."); return; }
+    if (form.role === "gerente_loja" && !form.loja) { setErro("Selecione a loja do gerente."); return; }
     setErro("");
     try {
-      await api("/app_users", { method:"POST", body:JSON.stringify(form) });
-      setForm({ nome:"", email:"", senha:"", role:"user" });
+      const payload = { ...form };
+      if (form.role !== "gerente_loja") delete payload.loja;
+      await api("/app_users", { method:"POST", body:JSON.stringify(payload) });
+      setForm({ nome:"", email:"", senha:"", role:"user", loja:"" });
       setOk("Usuário criado!"); setTimeout(()=>setOk(""),3000); fetchUsers();
     } catch { setErro("Erro ao criar. E-mail já cadastrado?"); }
   };
 
   const startEdit = (u) => {
     setEditingId(u.id);
-    setEditForm({ nome:u.nome, email:u.email, senha:"", role:u.role });
+    setEditForm({ nome:u.nome, email:u.email, senha:"", role:u.role, loja:u.loja||"" });
     setErro(""); setOk("");
   };
 
   const saveEdit = async () => {
     if (!editForm.nome||!editForm.email) { setErro("Nome e e-mail são obrigatórios."); return; }
+    if (editForm.role === "gerente_loja" && !editForm.loja) { setErro("Selecione a loja do gerente."); return; }
     setErro("");
-    const payload = { nome:editForm.nome, email:editForm.email, role:editForm.role };
+    const payload = { nome:editForm.nome, email:editForm.email, role:editForm.role, loja: editForm.role === "gerente_loja" ? editForm.loja : null };
     if (editForm.senha.trim()) payload.senha = editForm.senha.trim();
     try {
       await api(`/app_users?id=eq.${editingId}`, { method:"PATCH", body:JSON.stringify(payload) });
@@ -65,12 +70,22 @@ function AdminUsers({ currentUser }) {
           <div><label style={S.label}>E-mail</label><input style={S.input} type="email" placeholder="email@exemplo.com" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} /></div>
           <div><label style={S.label}>Senha</label><input style={S.input} placeholder="Senha inicial" value={form.senha} onChange={e=>setForm({...form,senha:e.target.value})} /></div>
           <div><label style={S.label}>Perfil</label>
-            <select style={{ ...S.input, appearance:"none" }} value={form.role} onChange={e=>setForm({...form,role:e.target.value})}>
+            <select style={{ ...S.input, appearance:"none" }} value={form.role} onChange={e=>setForm({...form,role:e.target.value,loja:""})}>
               <option value="user">Usuário comum</option>
+              <option value="gerente_loja">Gerente de Loja</option>
               <option value="gerente">Gerente</option>
               <option value="admin">Administrador</option>
             </select>
           </div>
+          {form.role === "gerente_loja" && (
+            <div style={{ gridColumn:"1 / -1" }}>
+              <label style={S.label}>Loja *</label>
+              <select style={{ ...S.input, appearance:"none" }} value={form.loja} onChange={e=>setForm({...form,loja:e.target.value})}>
+                <option value="">Selecione a loja...</option>
+                {LOJAS.map(l=><option key={l}>{l}</option>)}
+              </select>
+            </div>
+          )}
         </div>
         {erro && !editingId && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#f87171", marginBottom:10 }}>⚠️ {erro}</div>}
         {ok && <div style={{ background:"rgba(34,197,94,.08)", border:"1px solid rgba(34,197,94,.2)", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#4ade80", marginBottom:10 }}>✅ {ok}</div>}
@@ -104,12 +119,22 @@ function AdminUsers({ currentUser }) {
                       </div>
                       <div>
                         <label style={labelStyle}>Perfil</label>
-                        <select style={{ ...S.input, appearance:"none" }} value={editForm.role} onChange={e=>setEditForm({...editForm,role:e.target.value})}>
+                        <select style={{ ...S.input, appearance:"none" }} value={editForm.role} onChange={e=>setEditForm({...editForm,role:e.target.value,loja:""})}>
                           <option value="user">Usuário comum</option>
+                          <option value="gerente_loja">Gerente de Loja</option>
                           <option value="gerente">Gerente</option>
                           <option value="admin">Administrador</option>
                         </select>
                       </div>
+                      {editForm.role === "gerente_loja" && (
+                        <div style={{ gridColumn:"1 / -1" }}>
+                          <label style={labelStyle}>Loja *</label>
+                          <select style={{ ...S.input, appearance:"none" }} value={editForm.loja} onChange={e=>setEditForm({...editForm,loja:e.target.value})}>
+                            <option value="">Selecione a loja...</option>
+                            {LOJAS.map(l=><option key={l}>{l}</option>)}
+                          </select>
+                        </div>
+                      )}
                     </div>
                     {erro && editingId === u.id && <div style={{ background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.25)", borderRadius:8, padding:"8px 12px", fontSize:12, color:"#f87171", marginBottom:10 }}>⚠️ {erro}</div>}
                     <div style={{ display:"flex", gap:10 }}>
@@ -130,8 +155,8 @@ function AdminUsers({ currentUser }) {
                       </div>
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
-                      <span style={S.tag(u.role==="admin"?"purple":u.role==="gerente"?"orange":"blue")}>
-                        {u.role==="admin"?"👑 Admin":u.role==="gerente"?"🏢 Gerente":"👤 Usuário"}
+                      <span style={S.tag(u.role==="admin"?"purple":u.role==="gerente"||u.role==="gerente_loja"?"orange":"blue")}>
+                        {u.role==="admin"?"👑 Admin":u.role==="gerente"?"🏢 Gerente":u.role==="gerente_loja"?`🏪 ${u.loja||"Gerente Loja"}`:"👤 Usuário"}
                       </span>
                       <button style={{ ...S.btn("ghost"), padding:"5px 12px", fontSize:12, color:"#38bdf8", borderColor:"rgba(56,189,248,.3)" }} onClick={()=>startEdit(u)}>✏️ Editar</button>
                       {u.id!==currentUser.id && <button style={{ ...S.btn("danger"), padding:"5px 11px", fontSize:12 }} onClick={()=>deleteUser(u.id)}>Excluir</button>}
