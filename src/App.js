@@ -286,7 +286,7 @@ export default function App() {
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
   return (
-    <div style={{ ...S.page, background: theme === "light" ? "#f0f4f8" : undefined, color: theme === "light" ? "#0f1923" : undefined }}>
+    <div style={{ ...S.page, ...(theme === "light" ? { background:"#f0f4f8", color:"#0f1923" } : {}) }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
@@ -311,7 +311,7 @@ export default function App() {
       {showAnalise && <AnaliseModal checkins={filtered} onClose={() => setShowAnalise(false)} />}
 
       {/* Header */}
-      <div style={{ background: theme === "light" ? "#ffffff" : "rgba(255,255,255,.03)", borderBottom: theme === "light" ? "1px solid #dde3ea" : "1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+      <div style={{ ...(theme === "light" ? { background:"#ffffff", borderBottom:"1px solid #dde3ea" } : {}), padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <img src="/logo.png" alt="HM Promotor" style={{ height:36, width:"auto", objectFit:"contain" }} />
           <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5 }}><span className="sdot"></span> tempo real</div>
@@ -336,20 +336,20 @@ export default function App() {
       <div style={{ display:"flex", width:"100%", overflowX:"hidden", padding:"14px 8px 0", gap:2 }}>
         {tabs.map(t => (
           <button key={t.id} className="tab-btn" onClick={()=>setTab(t.id)} style={{
-            flex:1, padding:"8px 4px", borderRadius:"10px 10px 0 0", fontWeight:600,
+            flex:1, padding:"10px 4px", borderRadius:"10px 10px 0 0", fontWeight:600,
             color:tab===t.id?"#c0392b":"#4a6080",
             background:tab===t.id?"rgba(192,57,43,.08)":"transparent",
             borderBottom:tab===t.id?"2px solid #c0392b":"2px solid transparent",
             display:"flex", flexDirection:"column", alignItems:"center", gap:2,
           }}>
-            <span style={{ fontSize:18 }}>{t.icon}</span>
-            <span style={{ fontSize:10 }}>{t.label}</span>
+            <span style={{ fontSize:22 }}>{t.icon}</span>
+            <span style={{ fontSize:12 }}>{t.label}</span>
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div style={{ margin:"0 24px 28px", ...S.card, borderRadius:"0 12px 12px 12px", padding:24, minHeight:420, background: theme === "light" ? "#ffffff" : undefined }}>
+      <div style={{ margin:"0 24px 28px", ...S.card, borderRadius:"0 12px 12px 12px", padding:24, minHeight:420, ...(theme === "light" ? { background:"#ffffff" } : {}) }}>
 
         {/* CHECK-IN */}
         {tab==="checkin" && (
@@ -454,7 +454,7 @@ export default function App() {
 
             {/* Totalizador */}
             <div style={{ display:"flex", gap:12, marginBottom:16, flexWrap:"wrap" }}>
-              <div style={{ ...S.card, background: theme === "light" ? "#ffffff" : undefined, border: theme === "light" ? "1px solid #dde3ea" : undefined, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
+              <div style={{ ...S.card, ...(theme === "light" ? { background:"#ffffff", border:"1px solid #dde3ea" } : {}), padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
                 <div style={{ fontSize:22, fontFamily:"'Space Mono',monospace", fontWeight:700, color:"#38bdf8" }}>{filtered.length}</div>
                 <div>
                   <div style={{ fontSize:12, fontWeight:600 }}>Check-ins no período</div>
@@ -465,7 +465,7 @@ export default function App() {
                 </div>
               </div>
               {isDashboard && (
-                <div style={{ ...S.card, background: theme === "light" ? "#ffffff" : undefined, border: theme === "light" ? "1px solid #dde3ea" : undefined, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
+                <div style={{ ...S.card, ...(theme === "light" ? { background:"#ffffff", border:"1px solid #dde3ea" } : {}), padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
                   <div style={{ fontSize:22, fontFamily:"'Space Mono',monospace", fontWeight:700, color:"#a78bfa" }}>
                     {[...new Set(filtered.map(c=>c.usuario))].length}
                   </div>
