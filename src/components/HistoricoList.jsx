@@ -37,8 +37,10 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
   const [fotoAberta, setFotoAberta] = useState(null);
   const isLight = theme === "light";
 
-  if (loading) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
-  if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
+  const muted = isLight ? "#2d3f55" : "#4a6080";
+
+  if (loading) return <div style={{ textAlign:"center", padding:48, color:muted }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
+  if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:muted }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
 
   const cols = isDashboard
     ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto", ...(isAdmin ? [""] : [])]
@@ -47,7 +49,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
   const borderColor = isLight ? "#dde3ea" : "#1a2d4a";
   const textPrimary = isLight ? "#0d1b2a" : "#e2e8f0";
   const textCell   = isLight ? "#0d1b2a" : "#cbd5e1";
-  const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:`1px solid ${borderColor}`, textAlign:"left" };
+  const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:muted, textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:`1px solid ${borderColor}`, textAlign:"left" };
   const tdStyle = { padding:"10px 12px", fontSize:12, color:textCell, verticalAlign:"middle", borderBottom:`1px solid ${isLight ? "#edf0f4" : "#0f1e33"}` };
 
   return (
@@ -69,7 +71,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
                 : (i%2===0 ? "#0a1628" : "#07101f");
               return (
                 <tr key={c.id} style={{ background: rowBg }} className="hvr-row">
-                  <td style={{ ...tdStyle, color:"#4a6080", fontWeight:600, width:36 }}>{checkins.length-i}</td>
+                  <td style={{ ...tdStyle, color:muted, fontWeight:600, width:36 }}>{checkins.length-i}</td>
                   {isDashboard && (
                     <td style={tdStyle}>
                       <div style={{ display:"flex", alignItems:"center", gap:7 }}>
@@ -102,7 +104,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
                   </td>
                   <td style={{ ...tdStyle, maxWidth:200 }}>
                     {c.resumo_visita
-                      ? <span onClick={()=>setResumoAberto(c)} style={{ color: isLight ? "#4a6080" : "#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block", cursor:"pointer" }} title="Clique para ver tudo">{c.resumo_visita}</span>
+                      ? <span onClick={()=>setResumoAberto(c)} style={{ color: isLight ? "#2d3f55" : "#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block", cursor:"pointer" }} title="Clique para ver tudo">{c.resumo_visita}</span>
                       : <span style={{ color:"#4a6080" }}>—</span>}
                   </td>
                   <td style={{ ...tdStyle, width:64 }}>

@@ -299,9 +299,11 @@ export default function App() {
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
         input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5)}
         body[data-theme="light"] { background:#f0f4f8; color:#0d1b2a; }
-        body[data-theme="light"] * { color:inherit; }
+        body[data-theme="light"] td, body[data-theme="light"] th, body[data-theme="light"] p,
+        body[data-theme="light"] span, body[data-theme="light"] div, body[data-theme="light"] label { color:#0d1b2a; }
         body[data-theme="light"] .tab-btn { color:#5a7190 !important; }
         body[data-theme="light"] input, body[data-theme="light"] select, body[data-theme="light"] textarea { background:#ffffff !important; color:#0d1b2a !important; border-color:#dde3ea !important; }
+        body[data-theme="light"] [style*="color:#4a6080"], body[data-theme="light"] [style*="color: #4a6080"] { color:#2d3f55 !important; }
       `}</style>
 
       {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} gpsEndereco={pendingPos?.endereco||""} gpsLat={pendingPos?.lat} gpsLng={pendingPos?.lng} />}
@@ -532,7 +534,7 @@ export default function App() {
 
         {/* FOLLOW UPS */}
         {tab==="followups" && (
-          <div className="fade-in"><FollowUpsTab user={user} isAdmin={isDashboard} canDelete={isAdmin} /></div>
+          <div className="fade-in"><FollowUpsTab user={user} isAdmin={isDashboard} canDelete={isAdmin} theme={theme} /></div>
         )}
 
         {/* SOLICITAÇÕES */}

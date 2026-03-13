@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import S from "../utils/styles";
 import { SUPABASE_URL, SUPABASE_KEY } from "../utils/constants";
 
-function FollowUpsTab({ user, isAdmin, canDelete }) {
+function FollowUpsTab({ user, isAdmin, canDelete, theme }) {
+  const isLight = theme === "light";
   const [followups, setFollowups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState("pendentes");
@@ -63,10 +64,13 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
     return true;
   });
 
-  const labelStyle = { fontSize:11, fontWeight:700, color:"#4a6080", letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:6 };
+  const muted   = isLight ? "#2d3f55" : "#4a6080";
+  const textMain = isLight ? "#0d1b2a" : "#cbd5e1";
+  const border   = isLight ? "#dde3ea" : "#1a2d4a";
 
-  const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
-  const tdStyle = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
+  const labelStyle = { fontSize:11, fontWeight:700, color:muted, letterSpacing:"0.08em", textTransform:"uppercase", display:"block", marginBottom:6 };
+  const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:muted, textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:`1px solid ${border}`, textAlign:"left" };
+  const tdStyle = { padding:"10px 12px", fontSize:12, color:textMain, verticalAlign:"middle", borderBottom:`1px solid ${isLight ? "#edf0f4" : "#0f1e33"}` };
 
   const statusBadge = (f) => {
     if (f.concluido) return <span style={{ fontSize:10, background:"rgba(34,197,94,.15)", color:"#4ade80", padding:"2px 7px", borderRadius:5, whiteSpace:"nowrap" }}>✅ Concluído</span>;
@@ -108,17 +112,17 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
       </div>
 
       {loading ? (
-        <div style={{ textAlign:"center", padding:40, color:"#4a6080" }}>Carregando...</div>
+        <div style={{ textAlign:"center", padding:40, color:muted }}>Carregando...</div>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign:"center", padding:40, color:"#4a6080" }}>
+        <div style={{ textAlign:"center", padding:40, color:muted }}>
           <div style={{ fontSize:32, marginBottom:10 }}>🔔</div>
           <div>Nenhum follow up encontrado</div>
         </div>
       ) : isAdmin ? (
-        <div style={{ overflowX:"auto" }}>
+        <div style={{ overflowX:"auto", borderRadius:12, border:`1px solid ${border}` }}>
           <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
             <thead>
-              <tr style={{ background:"rgba(255,255,255,.02)" }}>
+              <tr style={{ background: isLight ? "#f8fafc" : "rgba(255,255,255,.02)" }}>
                 <th style={thStyle}>Usuário</th>
                 <th style={thStyle}>Data</th>
                 <th style={thStyle}>Cliente</th>
@@ -133,7 +137,7 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
                   <td style={tdStyle}>{f.usuario}</td>
                   <td style={{ ...tdStyle, whiteSpace:"nowrap" }}>{new Date(f.data_followup + "T12:00:00").toLocaleDateString("pt-BR")}</td>
                   <td style={{ ...tdStyle, whiteSpace:"nowrap" }}>
-                    {f.codigo_cliente ? <><span style={{ color:"#fb923c", fontWeight:600 }}>{f.codigo_cliente}</span>{f.nome_cliente ? <span style={{ color:"#94a3b8" }}> · {f.nome_cliente}</span> : ""}</> : "—"}
+                    {f.codigo_cliente ? <><span style={{ color:"#fb923c", fontWeight:600 }}>{f.codigo_cliente}</span>{f.nome_cliente ? <span style={{ color: isLight ? "#2d3f55" : "#94a3b8" }}> · {f.nome_cliente}</span> : ""}</> : "—"}
                   </td>
                   <td style={{ ...tdStyle, maxWidth:280 }}>{f.observacao}</td>
                   <td style={tdStyle}>{statusBadge(f)}</td>
@@ -167,8 +171,8 @@ function FollowUpsTab({ user, isAdmin, canDelete }) {
                   )}
                   {statusBadge(f)}
                 </div>
-                <div style={{ fontSize:13, color:"#e2e8f0", lineHeight:1.5, marginBottom:6 }}>{f.observacao}</div>
-                <div style={{ fontSize:11, color:"#4a6080", marginBottom: f.concluido ? 0 : 10 }}>
+                <div style={{ fontSize:13, color: isLight ? "#0d1b2a" : "#e2e8f0", lineHeight:1.5, marginBottom:6 }}>{f.observacao}</div>
+                <div style={{ fontSize:11, color:muted, marginBottom: f.concluido ? 0 : 10 }}>
                   📅 {new Date(f.data_followup + "T12:00:00").toLocaleDateString("pt-BR")}
                 </div>
                 {!f.concluido && (
