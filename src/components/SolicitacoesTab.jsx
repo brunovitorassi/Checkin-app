@@ -57,8 +57,8 @@ function SolicitacoesTab({ user }) {
               fontWeight: 600,
               cursor: "pointer",
               fontFamily: "inherit",
-              border: filtro === f.id ? "1px solid #2563eb" : "1px solid #1e3050",
-              background: filtro === f.id ? "#2563eb" : "rgba(255,255,255,.04)",
+              border: filtro === f.id ? "1px solid #c0392b" : "1px solid #1e3050",
+              background: filtro === f.id ? "#c0392b" : "rgba(255,255,255,.04)",
               color: filtro === f.id ? "#fff" : "#64748b",
               transition: "all .15s",
             }}

@@ -298,9 +298,11 @@ export default function App() {
       {/* Header */}
       <div style={{ background:"rgba(255,255,255,.03)", borderBottom:"1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:34, height:34, borderRadius:10, background:"linear-gradient(135deg,#0ea5e9,#6366f1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>📍</div>
+          <div style={{ width:34, height:34, borderRadius:"50%", background:"#c0392b", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>📍</div>
           <div>
-            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:14, fontWeight:700 }}>CheckPoint</div>
+            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:14, fontWeight:700 }}>
+              <span style={{ color:"#fff" }}>HM</span><span style={{ color:"#c0392b" }}> Promotor</span>
+            </div>
             <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5, marginTop:1 }}><span className="sdot"></span> tempo real</div>
           </div>
         </div>
@@ -324,9 +326,9 @@ export default function App() {
         {tabs.map(t => (
           <button key={t.id} className="tab-btn" onClick={()=>setTab(t.id)} style={{
             flex:1, padding:"8px 4px", borderRadius:"10px 10px 0 0", fontWeight:600,
-            color:tab===t.id?"#38bdf8":"#4a6080",
-            background:tab===t.id?"rgba(56,189,248,.08)":"transparent",
-            borderBottom:tab===t.id?"2px solid #38bdf8":"2px solid transparent",
+            color:tab===t.id?"#c0392b":"#4a6080",
+            background:tab===t.id?"rgba(192,57,43,.08)":"transparent",
+            borderBottom:tab===t.id?"2px solid #c0392b":"2px solid transparent",
             display:"flex", flexDirection:"column", alignItems:"center", gap:2,
           }}>
             <span style={{ fontSize:18 }}>{t.icon}</span>
@@ -351,7 +353,7 @@ export default function App() {
                 <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
               </div>
             </div>
-            <button className="hvr" style={{ ...S.btn("primary"), width:"100%", padding:15, fontSize:15 }} onClick={iniciarCheckIn} disabled={loading}>
+            <button className="hvr" style={{ ...S.btn("primary"), width:"100%", padding:15, fontSize:15, background:"#c0392b", border:"none" }} onClick={iniciarCheckIn} disabled={loading}>
               {loading?"📡 Obtendo localização...":"📍 Registrar Check-in"}
             </button>
             {status && (
