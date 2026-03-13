@@ -298,9 +298,10 @@ export default function App() {
         .sdot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:blink 2s infinite;display:inline-block}
         @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
         input[type=date]::-webkit-calendar-picker-indicator{filter:invert(.5)}
-        body[data-theme="light"] { --bg:#f0f4f8; --surface:#ffffff; --border:#dde3ea; --text:#0f1923; --text-muted:#5a7190; }
+        body[data-theme="light"] { background:#f0f4f8; color:#0d1b2a; }
+        body[data-theme="light"] * { color:inherit; }
         body[data-theme="light"] .tab-btn { color:#5a7190 !important; }
-        body[data-theme="light"] input, body[data-theme="light"] select { background:#fff !important; color:#0f1923 !important; border-color:#dde3ea !important; }
+        body[data-theme="light"] input, body[data-theme="light"] select, body[data-theme="light"] textarea { background:#ffffff !important; color:#0d1b2a !important; border-color:#dde3ea !important; }
       `}</style>
 
       {showModal && <CheckInModal user={user} onConfirm={confirmarCheckIn} onCancel={()=>{setShowModal(false);setPendingPos(null);}} loading={loading} gpsEndereco={pendingPos?.endereco||""} gpsLat={pendingPos?.lat} gpsLng={pendingPos?.lng} />}
@@ -310,15 +311,10 @@ export default function App() {
       {showAnalise && <AnaliseModal checkins={filtered} onClose={() => setShowAnalise(false)} />}
 
       {/* Header */}
-      <div style={{ background: theme === "light" ? "rgba(0,0,0,.04)" : "rgba(255,255,255,.03)", borderBottom: theme === "light" ? "1px solid #dde3ea" : "1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
+      <div style={{ background: theme === "light" ? "#ffffff" : "rgba(255,255,255,.03)", borderBottom: theme === "light" ? "1px solid #dde3ea" : "1px solid rgba(255,255,255,.06)", padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <img src="/logo.png" alt="HM Promotor" style={{ height:36, width:"auto", objectFit:"contain" }} />
-          <div>
-            <div style={{ fontFamily:"'Space Mono',monospace", fontSize:14, fontWeight:700 }}>
-              <span style={{ color: theme === "light" ? "#0f1923" : "#fff" }}>HM</span><span style={{ color:"#c0392b" }}> Promotor</span>
-            </div>
-            <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5, marginTop:1 }}><span className="sdot"></span> tempo real</div>
-          </div>
+          <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5 }}><span className="sdot"></span> tempo real</div>
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
@@ -458,7 +454,7 @@ export default function App() {
 
             {/* Totalizador */}
             <div style={{ display:"flex", gap:12, marginBottom:16, flexWrap:"wrap" }}>
-              <div style={{ ...S.card, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
+              <div style={{ ...S.card, background: theme === "light" ? "#ffffff" : undefined, border: theme === "light" ? "1px solid #dde3ea" : undefined, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
                 <div style={{ fontSize:22, fontFamily:"'Space Mono',monospace", fontWeight:700, color:"#38bdf8" }}>{filtered.length}</div>
                 <div>
                   <div style={{ fontSize:12, fontWeight:600 }}>Check-ins no período</div>
@@ -469,7 +465,7 @@ export default function App() {
                 </div>
               </div>
               {isDashboard && (
-                <div style={{ ...S.card, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
+                <div style={{ ...S.card, background: theme === "light" ? "#ffffff" : undefined, border: theme === "light" ? "1px solid #dde3ea" : undefined, padding:"10px 18px", display:"flex", alignItems:"center", gap:10, flex:"1 1 auto" }}>
                   <div style={{ fontSize:22, fontFamily:"'Space Mono',monospace", fontWeight:700, color:"#a78bfa" }}>
                     {[...new Set(filtered.map(c=>c.usuario))].length}
                   </div>

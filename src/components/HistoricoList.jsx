@@ -32,9 +32,10 @@ function FotoModal({ url, onClose }) {
   );
 }
 
-function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading }) {
+function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, theme }) {
   const [resumoAberto, setResumoAberto] = useState(null);
   const [fotoAberta, setFotoAberta] = useState(null);
+  const isLight = theme === "light";
 
   if (loading) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
   if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:"#4a6080" }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
@@ -43,14 +44,17 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading }) {
     ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto", ...(isAdmin ? [""] : [])]
     : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto"];
 
-  const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:"1px solid #1a2d4a", textAlign:"left" };
-  const tdStyle = { padding:"10px 12px", fontSize:12, color:"#cbd5e1", verticalAlign:"middle", borderBottom:"1px solid #0f1e33" };
+  const borderColor = isLight ? "#dde3ea" : "#1a2d4a";
+  const textPrimary = isLight ? "#0d1b2a" : "#e2e8f0";
+  const textCell   = isLight ? "#0d1b2a" : "#cbd5e1";
+  const thStyle = { padding:"9px 12px", fontSize:10, fontWeight:700, color:"#4a6080", textTransform:"uppercase", letterSpacing:"0.08em", whiteSpace:"nowrap", borderBottom:`1px solid ${borderColor}`, textAlign:"left" };
+  const tdStyle = { padding:"10px 12px", fontSize:12, color:textCell, verticalAlign:"middle", borderBottom:`1px solid ${isLight ? "#edf0f4" : "#0f1e33"}` };
 
   return (
     <>
-      <div style={{ overflowX:"auto", borderRadius:12, border:"1px solid #1a2d4a" }}>
+      <div style={{ overflowX:"auto", borderRadius:12, border:`1px solid ${borderColor}` }}>
         <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isDashboard ? 900 : 680 }}>
-          <thead style={{ background:"#07101f" }}>
+          <thead style={{ background: isLight ? "#f8fafc" : "#07101f" }}>
             <tr>
               {cols.map(c => <th key={c} style={thStyle}>{c}</th>)}
             </tr>
@@ -60,18 +64,21 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading }) {
               const est = ENDERECO_STATUS_STYLE[c.endereco_status || "nao_verificado"];
               const avatar = (c.usuario||"?").split(" ").map((n)=>n[0]).join("").slice(0,2).toUpperCase();
               const avatarBg = `hsl(${(c.usuario||"").charCodeAt(0)*7%360},55%,35%)`;
+              const rowBg = isLight
+                ? (i%2===0 ? "#ffffff" : "#f8fafc")
+                : (i%2===0 ? "#0a1628" : "#07101f");
               return (
-                <tr key={c.id} style={{ background: i%2===0 ? "#0a1628" : "#07101f" }} className="hvr-row">
+                <tr key={c.id} style={{ background: rowBg }} className="hvr-row">
                   <td style={{ ...tdStyle, color:"#4a6080", fontWeight:600, width:36 }}>{checkins.length-i}</td>
                   {isDashboard && (
                     <td style={tdStyle}>
                       <div style={{ display:"flex", alignItems:"center", gap:7 }}>
                         <div style={{ width:26, height:26, borderRadius:"50%", background:avatarBg, display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, color:"#fff", flexShrink:0 }}>{avatar}</div>
-                        <span style={{ fontWeight:600, whiteSpace:"nowrap" }}>{c.usuario}</span>
+                        <span style={{ fontWeight:600, whiteSpace:"nowrap", color:textPrimary }}>{c.usuario}</span>
                       </div>
                     </td>
                   )}
-                  <td style={{ ...tdStyle, whiteSpace:"nowrap", color:"#38bdf8" }}>{formatDate(c.timestamp)}</td>
+                  <td style={{ ...tdStyle, whiteSpace:"nowrap", color: isLight ? "#1d6fa8" : "#38bdf8" }}>{formatDate(c.timestamp)}</td>
                   <td style={tdStyle}>
                     {c.loja ? <span style={{ ...S.tag("purple"), fontSize:11 }}>🏪 {c.loja}</span> : <span style={{ color:"#4a6080" }}>—</span>}
                   </td>
@@ -95,7 +102,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading }) {
                   </td>
                   <td style={{ ...tdStyle, maxWidth:200 }}>
                     {c.resumo_visita
-                      ? <span onClick={()=>setResumoAberto(c)} style={{ color:"#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block", cursor:"pointer" }} title="Clique para ver tudo">{c.resumo_visita}</span>
+                      ? <span onClick={()=>setResumoAberto(c)} style={{ color: isLight ? "#4a6080" : "#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block", cursor:"pointer" }} title="Clique para ver tudo">{c.resumo_visita}</span>
                       : <span style={{ color:"#4a6080" }}>—</span>}
                   </td>
                   <td style={{ ...tdStyle, width:64 }}>
