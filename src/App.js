@@ -259,6 +259,7 @@ export default function App() {
 
   const filtered = applyFilters(checkins);
   const totalToday = checkins.filter(c=>new Date(c.timestamp).toDateString()===new Date().toDateString()).length;
+  const totalMes = checkins.filter(c=>{ const d=new Date(c.timestamp); const n=new Date(); return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear(); }).length;
 
   const tabs = [
     ...(!isDashboard ? [{ id:"checkin", label:"Check-in", icon:"✅" }] : []),
@@ -341,8 +342,8 @@ export default function App() {
                 <div style={{ fontSize:11, color:"#4a6080", marginTop:4, letterSpacing:"0.08em" }}>HOJE</div>
               </div>
               <div style={{ flex:1, background:"#0d1f35", borderRadius:14, padding:"16px 12px", textAlign:"center" }}>
-                <div style={{ fontSize:32, fontWeight:700, color:"#fff", fontFamily:"'Space Mono',monospace" }}>{checkins.length}</div>
-                <div style={{ fontSize:11, color:"#4a6080", marginTop:4, letterSpacing:"0.08em" }}>TOTAL</div>
+                <div style={{ fontSize:32, fontWeight:700, color:"#fff", fontFamily:"'Space Mono',monospace" }}>{totalMes}</div>
+                <div style={{ fontSize:11, color:"#4a6080", marginTop:4, letterSpacing:"0.08em" }}>TOTAL DO MÊS</div>
               </div>
             </div>
 
