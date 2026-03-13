@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import S from "../utils/styles";
-import { EDGE_FUNCTION_URL, TABELAS_PRECO, SUPABASE_KEY } from "../utils/constants";
+import { EDGE_FUNCTION_URL, TABELAS_PRECO, SUPABASE_KEY, SUPABASE_URL } from "../utils/constants";
 import { formatCurrency, api } from "../utils/helpers";
 import SolicitacaoVisitaModal from "./SolicitacaoVisitaModal";
 
@@ -35,16 +35,11 @@ function ClienteSearch({ isDashboard, user }) {
       const doisMesesAtras = new Date(hoje); doisMesesAtras.setMonth(doisMesesAtras.getMonth()-2);
       const dataInicial = doisMesesAtras.toISOString().split("T")[0];
 
+      const authHeaders = { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` };
       const [settledCliente, settledFin, settledHist] = await Promise.allSettled([
-        fetch(`${EDGE_FUNCTION_URL}?${paramKey}=${paramVal}`, {
-          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
-        }),
-        fetch(`https://portal.heidermaq.com.br/api/Clientes/FinanceiroEmAberto?${paramKey}=${paramVal}&registrosPorPagina=100&pagina=1`, {
-          headers: { "Authorization": "3dfdlJsW4yM3ltEuhevqCizMnRvkr5Lc9gyT27O4dx+TclfFHZE5n0rH07PrdS+WST6yGI8bc7p26jLWU80ZNQ==", "Accept": "application/json" }
-        }),
-        fetch(`https://portal.heidermaq.com.br/api/Venda/ListarFaturamento?${paramKey}=${paramVal}&dataEmissao=${dataInicial}&registrosPorPagina=200&pagina=1`, {
-          headers: { "Authorization": "3dfdlJsW4yM3ltEuhevqCizMnRvkr5Lc9gyT27O4dx+TclfFHZE5n0rH07PrdS+WST6yGI8bc7p26jLWU80ZNQ==", "Accept": "application/json" }
-        }),
+        fetch(`${EDGE_FUNCTION_URL}?${paramKey}=${paramVal}`, { headers: authHeaders }),
+        fetch(`${SUPABASE_URL}/functions/v1/buscar-financeiro?${paramKey}=${paramVal}`, { headers: authHeaders }),
+        fetch(`${SUPABASE_URL}/functions/v1/buscar-historico?${paramKey}=${paramVal}&dataInicial=${dataInicial}`, { headers: authHeaders }),
       ]);
 
       if (settledCliente.status === "rejected") { setErro("Erro ao conectar com o servidor. Tente novamente."); setBuscando(false); return; }
