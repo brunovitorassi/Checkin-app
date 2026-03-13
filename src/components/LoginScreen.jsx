@@ -19,7 +19,6 @@ function LoginScreen({ onLogin }) {
 
   return (
     <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", padding:24, fontFamily:"'DM Sans','Segoe UI',sans-serif", ...(window.innerWidth >= 768 ? { backgroundImage:"url('/bg-login.png')", backgroundSize:"cover", backgroundPosition:"center", backgroundRepeat:"no-repeat" } : { background:"#0a1628" }) }}>
-      {window.innerWidth >= 768 && <div style={{ position:"fixed", inset:0, background:"rgba(10,22,40,0.55)", zIndex:0 }} />}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
