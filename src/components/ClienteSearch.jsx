@@ -139,6 +139,18 @@ function ClienteSearch({ isDashboard, user }) {
             <div>
               <div style={{ fontWeight:700, fontSize:17 }}>{cliente.nome}</div>
               <div style={{ fontSize:12, color:"#4a6080", marginTop:3 }}>Código: {codigo} {cliente.loja && <span style={{ ...S.tag("purple"), fontSize:11, marginLeft:6 }}>🏪 {cliente.loja}</span>}</div>
+              <div style={{ display:"flex", gap:6, marginTop:8, flexWrap:"wrap" }}>
+                {(() => {
+                  const ativo     = cliente.ativo     ?? cliente._raw?.ativo;
+                  const bloqueado = cliente.bloqueado ?? cliente._raw?.bloqueado;
+                  const badgeBase = { display:"inline-flex", alignItems:"center", gap:4, padding:"3px 10px", borderRadius:20, fontSize:12, fontWeight:600 };
+                  return (<>
+                    {ativo === true  && <span style={{ ...badgeBase, background:"rgba(34,197,94,0.15)",  color:"#22c55e", border:"1px solid rgba(34,197,94,0.3)"  }}>● Ativo</span>}
+                    {ativo === false && <span style={{ ...badgeBase, background:"rgba(239,68,68,0.15)", color:"#ef4444", border:"1px solid rgba(239,68,68,0.3)" }}>● Inativo</span>}
+                    {bloqueado === true && <span style={{ ...badgeBase, background:"rgba(239,68,68,0.15)", color:"#ef4444", border:"1px solid rgba(239,68,68,0.3)" }}>🔒 Bloqueado</span>}
+                  </>);
+                })()}
+              </div>
             </div>
           </div>
 
