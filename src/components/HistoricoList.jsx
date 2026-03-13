@@ -206,7 +206,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
                       : <span style={{ color:muted }}>—</span>}
                   </td>
                   <td style={{ ...tdStyle, maxWidth:220, minWidth:140 }}>
-                    {isDashboard ? (
+                    {isAdmin ? (
                       editandoRetorno === c.id ? (
                         <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
                           <textarea
