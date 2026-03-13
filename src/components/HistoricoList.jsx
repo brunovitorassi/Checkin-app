@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import S from "../utils/styles";
 import { formatDate, resumirEndereco, ENDERECO_STATUS_STYLE } from "../utils/helpers";
+import { SUPABASE_URL, SUPABASE_KEY } from "../utils/constants";
 
 function ResumoModal({ checkin, onClose }) {
   return (
@@ -32,19 +33,52 @@ function FotoModal({ url, onClose }) {
   );
 }
 
-function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, theme }) {
+function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, theme, user, onUpdateCheckin }) {
   const [resumoAberto, setResumoAberto] = useState(null);
   const [fotoAberta, setFotoAberta] = useState(null);
-  const isLight = theme === "light";
+  const [editandoRetorno, setEditandoRetorno] = useState(null);
+  const [textoRetorno, setTextoRetorno] = useState("");
+  const [salvando, setSalvando] = useState(false);
 
+  const isLight = theme === "light";
   const muted = isLight ? "#2d3f55" : "#4a6080";
+
+  const salvarRetorno = async (checkinId) => {
+    setSalvando(true);
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/checkins?id=eq.${checkinId}`, {
+        method: "PATCH",
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify({
+          retorno_supervisor: textoRetorno.trim(),
+          retorno_supervisor_autor: user?.nome || "—",
+          retorno_supervisor_at: new Date().toISOString(),
+        }),
+      });
+      if (res.ok) {
+        onUpdateCheckin?.(checkinId, {
+          retorno_supervisor: textoRetorno.trim(),
+          retorno_supervisor_autor: user?.nome || "—",
+          retorno_supervisor_at: new Date().toISOString(),
+        });
+        setEditandoRetorno(null);
+        setTextoRetorno("");
+      }
+    } catch {}
+    setSalvando(false);
+  };
 
   if (loading) return <div style={{ textAlign:"center", padding:48, color:muted }}><div style={{ fontSize:32, marginBottom:12 }}>⏳</div>Carregando...</div>;
   if (!checkins.length) return <div style={{ textAlign:"center", padding:48, color:muted }}><div style={{ fontSize:36, marginBottom:12 }}>📋</div>Nenhum check-in encontrado</div>;
 
   const cols = isDashboard
-    ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto", ...(isAdmin ? [""] : [])]
-    : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "📷 Foto"];
+    ? ["#", "Usuário", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "Retorno", "📷 Foto", ...(isAdmin ? [""] : [])]
+    : ["#", "Data/Hora", "Loja", "Cliente", "Endereço", "Resumo", "Retorno", "📷 Foto"];
 
   const borderColor = isLight ? "#dde3ea" : "#1a2d4a";
   const textPrimary = isLight ? "#0d1b2a" : "#e2e8f0";
@@ -55,7 +89,7 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
   return (
     <>
       <div style={{ overflowX:"auto", borderRadius:12, border:`1px solid ${borderColor}` }}>
-        <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isDashboard ? 900 : 680 }}>
+        <table style={{ width:"100%", borderCollapse:"collapse", minWidth: isDashboard ? 1100 : 820 }}>
           <thead style={{ background: isLight ? "#f8fafc" : "#07101f" }}>
             <tr>
               {cols.map(c => <th key={c} style={thStyle}>{c}</th>)}
@@ -82,10 +116,10 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
                   )}
                   <td style={{ ...tdStyle, whiteSpace:"nowrap", color: isLight ? "#1d6fa8" : "#38bdf8" }}>{formatDate(c.timestamp)}</td>
                   <td style={tdStyle}>
-                    {c.loja ? <span style={{ ...S.tag("purple"), fontSize:11 }}>🏪 {c.loja}</span> : <span style={{ color:"#4a6080" }}>—</span>}
+                    {c.loja ? <span style={{ ...S.tag("purple"), fontSize:11 }}>🏪 {c.loja}</span> : <span style={{ color:muted }}>—</span>}
                   </td>
                   <td style={tdStyle}>
-                    {c.codigo_cliente ? <span style={{ ...S.tag("orange"), fontSize:11 }}>🏷️ {c.codigo_cliente}</span> : <span style={{ color:"#4a6080" }}>—</span>}
+                    {c.codigo_cliente ? <span style={{ ...S.tag("orange"), fontSize:11 }}>🏷️ {c.codigo_cliente}</span> : <span style={{ color:muted }}>—</span>}
                   </td>
                   <td style={{ ...tdStyle, maxWidth:220 }}>
                     <span title={`${est.title}\n${c.endereco}`} style={{
@@ -105,12 +139,61 @@ function HistoricoList({ checkins, onDelete, isAdmin, isDashboard, loading, them
                   <td style={{ ...tdStyle, maxWidth:200 }}>
                     {c.resumo_visita
                       ? <span onClick={()=>setResumoAberto(c)} style={{ color: isLight ? "#2d3f55" : "#94a3b8", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block", cursor:"pointer" }} title="Clique para ver tudo">{c.resumo_visita}</span>
-                      : <span style={{ color:"#4a6080" }}>—</span>}
+                      : <span style={{ color:muted }}>—</span>}
                   </td>
+
+                  {/* Retorno Supervisor */}
+                  <td style={{ ...tdStyle, maxWidth:220, minWidth:140 }}>
+                    {isDashboard ? (
+                      editandoRetorno === c.id ? (
+                        <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                          <textarea
+                            value={textoRetorno}
+                            onChange={e => setTextoRetorno(e.target.value.slice(0, 500))}
+                            placeholder="Digite o retorno do supervisor..."
+                            style={{ width:"100%", background:"#0d1a2e", border:"1px solid #1a2d4a", borderRadius:8, padding:"7px 10px", color:"#e2e8f0", fontSize:12, fontFamily:"inherit", resize:"vertical", minHeight:70, outline:"none" }}
+                          />
+                          <div style={{ display:"flex", gap:5 }}>
+                            <button onClick={() => salvarRetorno(c.id)} disabled={salvando || !textoRetorno.trim()}
+                              style={{ flex:1, padding:"5px 8px", background:"rgba(34,197,94,.12)", border:"1px solid rgba(34,197,94,.3)", borderRadius:7, color:"#4ade80", fontSize:11, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+                              {salvando ? "..." : "Salvar"}
+                            </button>
+                            <button onClick={() => { setEditandoRetorno(null); setTextoRetorno(""); }}
+                              style={{ flex:1, padding:"5px 8px", background:"rgba(255,255,255,.04)", border:"1px solid #1e3050", borderRadius:7, color:"#64748b", fontSize:11, cursor:"pointer", fontFamily:"inherit" }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : c.retorno_supervisor ? (
+                        <div>
+                          <div style={{ fontSize:12, color:"#a78bfa", lineHeight:1.5, marginBottom:4 }}>💬 {c.retorno_supervisor}</div>
+                          <button onClick={() => { setEditandoRetorno(c.id); setTextoRetorno(c.retorno_supervisor); }}
+                            style={{ background:"none", border:"none", color:muted, fontSize:11, cursor:"pointer", padding:"2px 0", fontFamily:"inherit" }}>
+                            ✏️ editar
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setEditandoRetorno(c.id); setTextoRetorno(""); }}
+                          style={{ background:"none", border:"none", color:muted, fontSize:12, cursor:"pointer", padding:"3px 0", fontFamily:"inherit" }}>
+                          + Retorno
+                        </button>
+                      )
+                    ) : (
+                      c.retorno_supervisor ? (
+                        <div>
+                          <div style={{ fontSize:12, color:"#a78bfa", lineHeight:1.5, marginBottom:3 }}>💬 {c.retorno_supervisor}</div>
+                          <div style={{ fontSize:10, color:muted }}>
+                            {c.retorno_supervisor_autor || "Supervisor"} · {c.retorno_supervisor_at ? new Date(c.retorno_supervisor_at).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) : ""}
+                          </div>
+                        </div>
+                      ) : null
+                    )}
+                  </td>
+
                   <td style={{ ...tdStyle, width:64 }}>
                     {c.foto_url
                       ? <img src={c.foto_url} alt="foto" style={{ width:48, height:48, borderRadius:8, objectFit:"cover", cursor:"pointer", display:"block" }} onClick={()=>setFotoAberta(c.foto_url)} />
-                      : <span style={{ color:"#4a6080" }}>—</span>}
+                      : <span style={{ color:muted }}>—</span>}
                   </td>
                   {isAdmin && (
                     <td style={{ ...tdStyle, width:36 }}>

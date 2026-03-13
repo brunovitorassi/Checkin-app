@@ -15,6 +15,7 @@ import FollowUpsTab from "./components/FollowUpsTab";
 import SolicitacoesTab from "./components/SolicitacoesTab";
 import SolicitacaoPopup from "./components/SolicitacaoPopup";
 import AnaliseModal from "./components/AnaliseModal";
+import RetornoPopup from "./components/RetornoPopup";
 
 // ─── MOBILE GUARD ─────────────────────────────────────────────────────────────
 const isMobile = () => {
@@ -57,6 +58,7 @@ export default function App() {
   const [showAnalise, setShowAnalise] = useState(false);
   const [lastCheckin, setLastCheckin] = useState(null);
   const [followupPopup, setFollowupPopup] = useState([]);
+  const [retornoPopup, setRetornoPopup] = useState([]);
 
   const [theme, setTheme] = useState(() => localStorage.getItem("hm_theme") || "dark");
 
@@ -97,23 +99,32 @@ export default function App() {
     return () => clearInterval(t);
   }, [fetchCheckins, fetchUsers]);
 
-  // Check for due follow ups on load — only for regular users, never admin/gerente
+  // Check for due follow ups + new retornos on load — only for regular users
   useEffect(() => {
     if (!user || isDashboard) return;
-    const checkFollowUps = async () => {
+    const checkNotificacoes = async () => {
       try {
         const hoje = new Date().toISOString().split("T")[0];
-        const path = `/followups?concluido=eq.false&data_followup=lte.${hoje}&usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
-        const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
+        const resFu = await fetch(`${SUPABASE_URL}/rest/v1/followups?concluido=eq.false&data_followup=lte.${hoje}&usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`, {
           headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
         });
-        if (res.ok) {
-          const data = await res.json();
+        if (resFu.ok) {
+          const data = await resFu.json();
           if (data.length > 0) setFollowupPopup(data);
         }
       } catch {}
+      try {
+        const lastSeen = localStorage.getItem(`hm_last_seen_${user.nome}`) || new Date(0).toISOString();
+        const resRet = await fetch(`${SUPABASE_URL}/rest/v1/checkins?usuario=eq.${encodeURIComponent(user.nome)}&retorno_supervisor=not.is.null&retorno_supervisor_at=gt.${encodeURIComponent(lastSeen)}&order=retorno_supervisor_at.desc`, {
+          headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+        });
+        if (resRet.ok) {
+          const data = await resRet.json();
+          if (data.length > 0) setRetornoPopup(data);
+        }
+      } catch {}
     };
-    checkFollowUps();
+    checkNotificacoes();
   }, [user, isDashboard]);
 
   const concluirFollowUp = async (id) => {
@@ -255,6 +266,10 @@ export default function App() {
     setCheckins(prev => prev.filter(c=>c.id!==id));
   };
 
+  const handleUpdateCheckin = (id, fields) => {
+    setCheckins(prev => prev.map(c => c.id === id ? { ...c, ...fields } : c));
+  };
+
   // Aplicar filtros
   const applyFilters = (list) => {
     let r = list;
@@ -311,6 +326,7 @@ export default function App() {
       {followupPopup.length > 0 && <FollowUpPopup followups={followupPopup} onConcluir={concluirFollowUp} onFechar={()=>setFollowupPopup([])} />}
       {user?.role === "user" && <SolicitacaoPopup user={user} onClose={() => {}} />}
       {showAnalise && <AnaliseModal checkins={filtered} onClose={() => setShowAnalise(false)} />}
+      {retornoPopup.length > 0 && <RetornoPopup checkins={retornoPopup} onFechar={() => { localStorage.setItem(`hm_last_seen_${user.nome}`, new Date().toISOString()); setRetornoPopup([]); }} />}
 
       {/* Header */}
       <div style={{ ...(theme === "light" ? { background:"#ffffff", borderBottom:"1px solid #dde3ea" } : {}), padding:"15px 24px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12 }}>
@@ -479,7 +495,7 @@ export default function App() {
               )}
             </div>
 
-            <HistoricoList checkins={filtered} onDelete={handleDeleteCheckin} isAdmin={isAdmin} isDashboard={isDashboard} loading={fetching} theme={theme} />
+            <HistoricoList checkins={filtered} onDelete={handleDeleteCheckin} isAdmin={isAdmin} isDashboard={isDashboard} loading={fetching} theme={theme} user={user} onUpdateCheckin={handleUpdateCheckin} />
           </div>
         )}
 
