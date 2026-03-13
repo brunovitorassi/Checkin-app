@@ -343,39 +343,55 @@ export default function App() {
         {/* CHECK-IN */}
         {tab==="checkin" && (
           <div className="fade-in" style={{ maxWidth:440, margin:"0 auto" }}>
-            <p style={{ color:"#4a6080", fontSize:13, marginBottom:24 }}>Registre sua presença com localização GPS automática.</p>
-            <div style={{ background:"rgba(56,189,248,.05)", border:"1px solid rgba(56,189,248,.12)", borderRadius:12, padding:16, marginBottom:24, display:"flex", gap:12, alignItems:"center" }}>
-              <div style={{ width:44, height:44, borderRadius:"50%", background:`hsl(${user.nome.charCodeAt(0)*7%360},55%,30%)`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, fontWeight:700, flexShrink:0 }}>
-                {user.nome.split(" ").map(n=>n[0]).join("").slice(0,2).toUpperCase()}
+            {/* Contadores */}
+            <div style={{ display:"flex", gap:12, marginBottom:24 }}>
+              <div style={{ flex:1, background:"#0d1f35", borderRadius:14, padding:"16px 12px", textAlign:"center" }}>
+                <div style={{ fontSize:32, fontWeight:700, color:"#fff", fontFamily:"'Space Mono',monospace" }}>{totalToday}</div>
+                <div style={{ fontSize:11, color:"#4a6080", marginTop:4, letterSpacing:"0.08em" }}>HOJE</div>
               </div>
-              <div>
-                <div style={{ fontWeight:700, fontSize:15 }}>{user.nome}</div>
-                <div style={{ fontSize:12, color:"#4a6080", marginTop:2 }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
+              <div style={{ flex:1, background:"#0d1f35", borderRadius:14, padding:"16px 12px", textAlign:"center" }}>
+                <div style={{ fontSize:32, fontWeight:700, color:"#fff", fontFamily:"'Space Mono',monospace" }}>{checkins.length}</div>
+                <div style={{ fontSize:11, color:"#4a6080", marginTop:4, letterSpacing:"0.08em" }}>TOTAL</div>
               </div>
             </div>
-            <button className="hvr" style={{ ...S.btn("primary"), width:"100%", padding:15, fontSize:15, background:"#c0392b", border:"none" }} onClick={iniciarCheckIn} disabled={loading}>
-              {loading?"📡 Obtendo localização...":"📍 Registrar Check-in"}
+
+            {/* Saudação */}
+            <div style={{ marginBottom:24 }}>
+              <div style={{ fontSize:18, fontWeight:600, color:"#fff", marginBottom:4 }}>Olá, {user.nome.split(" ")[0]}!</div>
+              <div style={{ fontSize:13, color:"#4a6080" }}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"numeric",month:"long"})}</div>
+            </div>
+
+            {/* Botão */}
+            <button className="hvr" style={{ width:"100%", height:56, fontSize:16, fontWeight:600, background:"#c0392b", color:"#fff", border:"none", borderRadius:14, cursor:"pointer", fontFamily:"inherit", transition:"all .2s", marginBottom:16 }} onClick={iniciarCheckIn} disabled={loading}>
+              {loading ? "📡 Obtendo localização..." : "📍 Registrar Check-in"}
             </button>
+
+            {/* Status */}
             {status && (
-              <div className="fade-in" style={{ marginTop:14, padding:"12px 15px", borderRadius:10,
+              <div className="fade-in" style={{ marginBottom:16, padding:"12px 15px", borderRadius:10,
                 background:status.type==="success"?"rgba(34,197,94,.1)":"rgba(239,68,68,.1)",
                 border:`1px solid ${status.type==="success"?"rgba(34,197,94,.25)":"rgba(239,68,68,.25)"}`,
                 color:status.type==="success"?"#4ade80":"#f87171", fontSize:13, fontWeight:500, lineHeight:1.5 }}>
                 {status.msg}
               </div>
             )}
-            {checkins.length>0 && (
-              <div style={{ marginTop:28 }}>
-                <div style={{ ...S.label, marginBottom:10 }}>Últimos check-ins</div>
+
+            {/* Últimas visitas */}
+            {checkins.length > 0 && (
+              <div style={{ marginTop:8 }}>
+                <div style={{ fontSize:12, color:"#4a6080", fontWeight:700, letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:10 }}>Últimas visitas</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-                  {checkins.slice(0,5).map(c => (
-                    <div key={c.id} style={{ background:"#0a1628", border:"1px solid #1a2d4a", borderRadius:12, padding:"11px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                  {checkins.slice(0,3).map(c => (
+                    <div key={c.id} style={{ background:"#0d1f35", border:"1px solid #1a2d4a", borderRadius:12, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:11, color:"#38bdf8", marginBottom:4 }}>{formatDate(c.timestamp)}</div>
-                        <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                          {c.loja && <span style={S.tag("purple")}>🏪 {c.loja}</span>}
-                          {c.codigo_cliente && <span style={S.tag("orange")}>🏷️ {c.codigo_cliente}{c.nome_cliente ? ` · ${c.nome_cliente}` : ""}</span>}
+                        <div style={{ fontSize:14, fontWeight:600, color:"#fff", marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                          {c.nome_cliente || c.codigo_cliente || "—"}
                         </div>
+                        <div style={{ fontSize:12, color:"#60a5fa" }}>{c.loja || "—"}</div>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+                        <div style={{ fontSize:11, color:"#4a6080" }}>{new Date(c.timestamp).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
+                        <div style={{ width:8, height:8, borderRadius:"50%", background:"#22c55e" }}></div>
                       </div>
                     </div>
                   ))}

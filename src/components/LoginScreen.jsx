@@ -27,16 +27,16 @@ function LoginScreen({ onLogin }) {
         .fade-in{animation:fi .4s ease} @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
       <div className="fade-in" style={{ width:"100%", maxWidth:400 }}>
-        <div style={{ textAlign:"center", marginBottom:32 }}>
+        <div style={{ textAlign:"center", marginBottom:32, paddingTop:48 }}>
           <img
             src="/logo.png"
             alt="Heidermaq"
-            width={140}
-            style={{ marginBottom:16, display:"block", margin:"0 auto 16px" }}
+            width={200}
+            style={{ display:"block", margin:"0 auto 20px" }}
             onError={e => { e.target.style.display = "none"; }}
           />
-          <h1 style={{ fontSize:18, fontWeight:700, color:"#fff", marginBottom:4 }}>HM Promotor</h1>
-          <p style={{ fontSize:12, color:"rgba(255,255,255,0.7)" }}>Heidermaq Comércio de Auto Peças</p>
+          <h1 style={{ fontSize:28, fontWeight:800, color:"#fff", marginBottom:6 }}>HM Promotor</h1>
+          <p style={{ fontSize:14, color:"rgba(255,255,255,0.7)" }}>Heidermaq Comércio de Auto Peças</p>
         </div>
         <div style={{ ...S.card, padding:28, display:"flex", flexDirection:"column", gap:18 }}>
           <div><label style={S.label}>E-mail</label><input style={S.input} type="email" placeholder="seu@email.com" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleLogin()} /></div>
