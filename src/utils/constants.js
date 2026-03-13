@@ -9,8 +9,6 @@ export const TRANSCRIPTION_URL = "https://gujatvpuowgjxbdbvnwd.supabase.co/funct
 
 export const todayStr = () => new Date().toISOString().slice(0, 10);
 
-export const OPENAI_KEY = process.env.REACT_APP_OPENAI_KEY;
-
 
 export const TABELAS_PRECO = {
   1: "Tabela 1",

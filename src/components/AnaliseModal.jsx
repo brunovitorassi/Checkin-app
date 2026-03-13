@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { OPENAI_KEY } from "../utils/constants";
+import { SUPABASE_URL, SUPABASE_KEY } from "../utils/constants";
 
 function AnaliseModal({ checkins, onClose }) {
   const [loading, setLoading] = useState(true);
@@ -12,52 +12,23 @@ function AnaliseModal({ checkins, onClose }) {
     setResultado(null);
 
     try {
-      const amostra = checkins.length > 300 ? checkins.slice(0, 300) : checkins;
-
-      const linhas = amostra.map(c =>
-        `Cliente: ${c.codigo_cliente || "—"} - ${c.nome_cliente || "—"} | Loja: ${c.loja || "—"} | Promotor: ${c.usuario || "—"} | Motivos: ${c.motivos_visita || "—"} | Resumo: ${c.resumo_visita || "—"}`
-      ).join("\n\n");
-
-      const systemPrompt = `Você é um analista de campo especializado em equipes de promotores de vendas. Analise os resumos de visitas abaixo e retorne EXATAMENTE neste formato JSON, sem markdown, sem explicações fora do JSON:
-{"pontos":["ponto 1","ponto 2"],"alertas":["alerta 1","alerta 2"],"ranking":[{"motivo":"nome","quantidade":N}]}
-Pontos: principais temas e padrões recorrentes (máx 6 itens).
-Alertas: clientes com problemas mencionados, queda de vendas, reclamações (máx 5 itens).
-Ranking: contagem real dos motivos de visita encontrados, ordenado por quantidade.`;
-
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/analisar-visitas`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${OPENAI_KEY}`,
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: linhas },
-          ],
-          temperature: 0.3,
-        }),
+        body: JSON.stringify({ checkins }),
       });
 
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`OpenAI ${res.status}: ${errText}`);
-      }
-
       const data = await res.json();
-      const raw = data.choices?.[0]?.message?.content || "";
 
-      let parsed;
-      try {
-        // Strip markdown fences if present
-        const clean = raw.replace(/```json|```/g, "").trim();
-        parsed = JSON.parse(clean);
-      } catch {
-        throw new Error("Resposta inválida da IA. Tente novamente.");
+      if (!res.ok) {
+        throw new Error(data.error || `Erro ${res.status}`);
       }
 
-      setResultado(parsed);
+      setResultado(data);
     } catch (err) {
       setErro(err.message || "Erro ao analisar. Tente novamente.");
     }
