@@ -16,7 +16,7 @@ function FollowUpsTab({ user, isAdmin, canDelete, theme, userLoja }) {
     setLoading(true);
     try {
       let path = isAdmin
-        ? `/followups?order=data_followup.asc${userLoja ? `&loja=eq.${encodeURIComponent(userLoja)}` : ""}`
+        ? (() => { const lojas = Array.isArray(userLoja) ? userLoja : (userLoja ? [userLoja] : []); return `/followups?order=data_followup.asc${lojas.length ? `&loja=in.(${lojas.map(encodeURIComponent).join(",")})` : ""}`; })()
         : `/followups?usuario=eq.${encodeURIComponent(user.nome)}&order=data_followup.asc`;
       const res = await fetch(`${SUPABASE_URL}/rest/v1${path}`, {
         headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }

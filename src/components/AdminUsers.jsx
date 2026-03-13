@@ -6,7 +6,7 @@ import { LOJAS } from "../utils/constants";
 function AdminUsers({ currentUser }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ nome:"", email:"", senha:"", role:"user", loja:"" });
+  const [form, setForm] = useState({ nome:"", email:"", senha:"", role:"user", loja:[] });
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [erro, setErro] = useState("");
@@ -21,26 +21,25 @@ function AdminUsers({ currentUser }) {
 
   const addUser = async () => {
     if (!form.nome||!form.email||!form.senha) { setErro("Preencha todos os campos."); return; }
-    if (form.role === "gerente_loja" && !form.loja) { setErro("Selecione a loja do gerente."); return; }
+    if (form.role === "gerente_loja" && form.loja.length === 0) { setErro("Selecione ao menos uma loja."); return; }
     setErro("");
     try {
-      const payload = { ...form };
-      if (form.role !== "gerente_loja") delete payload.loja;
+      const payload = { ...form, loja: form.role === "gerente_loja" ? form.loja : null };
       await api("/app_users", { method:"POST", body:JSON.stringify(payload) });
-      setForm({ nome:"", email:"", senha:"", role:"user", loja:"" });
+      setForm({ nome:"", email:"", senha:"", role:"user", loja:[] });
       setOk("Usuário criado!"); setTimeout(()=>setOk(""),3000); fetchUsers();
     } catch { setErro("Erro ao criar. E-mail já cadastrado?"); }
   };
 
   const startEdit = (u) => {
     setEditingId(u.id);
-    setEditForm({ nome:u.nome, email:u.email, senha:"", role:u.role, loja:u.loja||"" });
+    setEditForm({ nome:u.nome, email:u.email, senha:"", role:u.role, loja: Array.isArray(u.loja) ? u.loja : (u.loja ? [u.loja] : []) });
     setErro(""); setOk("");
   };
 
   const saveEdit = async () => {
     if (!editForm.nome||!editForm.email) { setErro("Nome e e-mail são obrigatórios."); return; }
-    if (editForm.role === "gerente_loja" && !editForm.loja) { setErro("Selecione a loja do gerente."); return; }
+    if (editForm.role === "gerente_loja" && editForm.loja.length === 0) { setErro("Selecione ao menos uma loja."); return; }
     setErro("");
     const payload = { nome:editForm.nome, email:editForm.email, role:editForm.role, loja: editForm.role === "gerente_loja" ? editForm.loja : null };
     if (editForm.senha.trim()) payload.senha = editForm.senha.trim();
@@ -79,11 +78,18 @@ function AdminUsers({ currentUser }) {
           </div>
           {form.role === "gerente_loja" && (
             <div style={{ gridColumn:"1 / -1" }}>
-              <label style={S.label}>Loja *</label>
-              <select style={{ ...S.input, appearance:"none" }} value={form.loja} onChange={e=>setForm({...form,loja:e.target.value})}>
-                <option value="">Selecione a loja...</option>
-                {LOJAS.map(l=><option key={l}>{l}</option>)}
-              </select>
+              <label style={S.label}>Lojas * <span style={{ fontWeight:400, color:"#4a6080" }}>(pode marcar mais de uma)</span></label>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:4 }}>
+                {LOJAS.map(l => {
+                  const checked = form.loja.includes(l);
+                  return (
+                    <label key={l} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:8, border:`1px solid ${checked?"#38bdf8":"#1e3050"}`, background:checked?"rgba(56,189,248,.1)":"transparent", cursor:"pointer", fontSize:13, color:checked?"#38bdf8":"#94a3b8", userSelect:"none" }}>
+                      <input type="checkbox" checked={checked} onChange={() => setForm(f => ({ ...f, loja: checked ? f.loja.filter(x=>x!==l) : [...f.loja, l] }))} style={{ display:"none" }} />
+                      {checked ? "✓ " : ""}{l}
+                    </label>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -128,11 +134,18 @@ function AdminUsers({ currentUser }) {
                       </div>
                       {editForm.role === "gerente_loja" && (
                         <div style={{ gridColumn:"1 / -1" }}>
-                          <label style={labelStyle}>Loja *</label>
-                          <select style={{ ...S.input, appearance:"none" }} value={editForm.loja} onChange={e=>setEditForm({...editForm,loja:e.target.value})}>
-                            <option value="">Selecione a loja...</option>
-                            {LOJAS.map(l=><option key={l}>{l}</option>)}
-                          </select>
+                          <label style={labelStyle}>Lojas * <span style={{ fontWeight:400, color:"#4a6080" }}>(pode marcar mais de uma)</span></label>
+                          <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginTop:4 }}>
+                            {LOJAS.map(l => {
+                              const checked = editForm.loja.includes(l);
+                              return (
+                                <label key={l} style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 12px", borderRadius:8, border:`1px solid ${checked?"#38bdf8":"#1e3050"}`, background:checked?"rgba(56,189,248,.1)":"transparent", cursor:"pointer", fontSize:13, color:checked?"#38bdf8":"#94a3b8", userSelect:"none" }}>
+                                  <input type="checkbox" checked={checked} onChange={() => setEditForm(f => ({ ...f, loja: checked ? f.loja.filter(x=>x!==l) : [...f.loja, l] }))} style={{ display:"none" }} />
+                                  {checked ? "✓ " : ""}{l}
+                                </label>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -156,7 +169,7 @@ function AdminUsers({ currentUser }) {
                     </div>
                     <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
                       <span style={S.tag(u.role==="admin"?"purple":u.role==="gerente"||u.role==="gerente_loja"?"orange":"blue")}>
-                        {u.role==="admin"?"👑 Admin":u.role==="gerente"?"🏢 Gerente":u.role==="gerente_loja"?`🏪 ${u.loja||"Gerente Loja"}`:"👤 Usuário"}
+                        {u.role==="admin"?"👑 Admin":u.role==="gerente"?"🏢 Gerente":u.role==="gerente_loja"?`🏪 ${Array.isArray(u.loja)&&u.loja.length?u.loja.join(", "):"Gerente Loja"}`:"👤 Usuário"}
                       </span>
                       <button style={{ ...S.btn("ghost"), padding:"5px 12px", fontSize:12, color:"#38bdf8", borderColor:"rgba(56,189,248,.3)" }} onClick={()=>startEdit(u)}>✏️ Editar</button>
                       {u.id!==currentUser.id && <button style={{ ...S.btn("danger"), padding:"5px 11px", fontSize:12 }} onClick={()=>deleteUser(u.id)}>Excluir</button>}

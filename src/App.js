@@ -84,8 +84,9 @@ export default function App() {
   const fetchCheckins = useCallback(async () => {
     if (!user) return;
     try {
-      const path = isGerenteLoja
-        ? `/checkins?loja=eq.${encodeURIComponent(user.loja)}&order=timestamp.desc&limit=500`
+      const lojas = Array.isArray(user.loja) ? user.loja : (user.loja ? [user.loja] : []);
+      const path = isGerenteLoja && lojas.length > 0
+        ? `/checkins?loja=in.(${lojas.map(encodeURIComponent).join(",")})&order=timestamp.desc&limit=500`
         : isDashboard
         ? "/checkins?order=timestamp.desc&limit=500"
         : `/checkins?usuario=eq.${encodeURIComponent(user.nome)}&order=timestamp.desc&limit=200`;
@@ -341,9 +342,9 @@ export default function App() {
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
-          {isGerenteLoja && user.loja && (
+          {isGerenteLoja && user.loja?.length > 0 && (
             <span style={{ fontSize:11, fontWeight:600, background:"rgba(251,146,60,.15)", color:"#fb923c", padding:"3px 8px", borderRadius:6, whiteSpace:"nowrap" }}>
-              🏪 {user.loja}
+              🏪 {Array.isArray(user.loja) ? user.loja.join(", ") : user.loja}
             </span>
           )}
           {isDashboard && (
