@@ -86,7 +86,7 @@ export default function App() {
     try {
       const lojas = Array.isArray(user.loja) ? user.loja : (user.loja ? [user.loja] : []);
       const path = isGerenteLoja && lojas.length > 0
-        ? `/checkins?loja=in.(${lojas.map(encodeURIComponent).join(",")})&order=timestamp.desc&limit=500`
+        ? `/checkins?loja=in.(${lojas.map(l=>`"${l}"`).join(",")})&order=timestamp.desc&limit=500`
         : isDashboard
         ? "/checkins?order=timestamp.desc&limit=500"
         : `/checkins?usuario=eq.${encodeURIComponent(user.nome)}&order=timestamp.desc&limit=200`;
