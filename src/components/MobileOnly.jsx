@@ -12,9 +12,9 @@ function MobileOnly({ onAdminLogin }) {
     if (!email || !senha) { setErro("Preencha e-mail e senha."); return; }
     setLoading(true); setErro("");
     try {
-      const data = await api(`/app_users?email=eq.${encodeURIComponent(email)}&senha=eq.${encodeURIComponent(senha)}&select=id,nome,email,role`);
+      const data = await api(`/app_users?email=eq.${encodeURIComponent(email)}&senha=eq.${encodeURIComponent(senha)}&select=*`);
       if (!data.length) { setErro("E-mail ou senha incorretos."); setLoading(false); return; }
-      if (data[0].role !== "admin" && data[0].role !== "gerente") { setErro("Acesso restrito a administradores e gerentes."); setLoading(false); return; }
+      if (!["admin","gerente","gerente_loja"].includes(data[0].role)) { setErro("Acesso restrito a administradores e gerentes."); setLoading(false); return; }
       onAdminLogin(data[0]);
     } catch { setErro("Erro de conexão. Tente novamente."); }
     setLoading(false);
