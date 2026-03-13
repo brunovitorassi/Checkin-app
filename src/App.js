@@ -306,18 +306,9 @@ export default function App() {
             <div style={{ fontSize:11, color:"#4a6080", display:"flex", alignItems:"center", gap:5, marginTop:1 }}><span className="sdot"></span> tempo real</div>
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-          <div style={{ textAlign:"center" }}><div style={{ fontFamily:"'Space Mono',monospace", fontSize:18, fontWeight:700, color:"#38bdf8" }}>{totalToday}</div><div style={{ fontSize:10, color:"#4a6080" }}>HOJE</div></div>
-          <div style={{ width:1, height:28, background:"#1a2d4a" }}></div>
-          <div style={{ textAlign:"center" }}><div style={{ fontFamily:"'Space Mono',monospace", fontSize:18, fontWeight:700, color:"#a78bfa" }}>{checkins.length}</div><div style={{ fontSize:10, color:"#4a6080" }}>TOTAL</div></div>
-          <div style={{ width:1, height:28, background:"#1a2d4a" }}></div>
-          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
-              <span style={S.tag(isAdmin?"purple":isGerente?"orange":"blue")}>{isAdmin?"👑 Admin":isGerente?"🏢 Gerente":"👤 Usuário"}</span>
-            </div>
-            <button className="hvr" style={{ ...S.btn("ghost"), padding:"7px 12px", fontSize:12 }} onClick={handleLogout}>Sair</button>
-          </div>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ fontSize:13, fontWeight:600 }}>{user.nome}</div>
+          <button className="hvr" style={{ ...S.btn("ghost"), padding:"7px 12px", fontSize:12 }} onClick={handleLogout}>Sair</button>
         </div>
       </div>
 
@@ -385,7 +376,7 @@ export default function App() {
                     <div key={c.id} style={{ background:"#0d1f35", border:"1px solid #1a2d4a", borderRadius:12, padding:"12px 14px", display:"flex", alignItems:"center", gap:10 }}>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:14, fontWeight:600, color:"#fff", marginBottom:3, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                          {c.nome_cliente || c.codigo_cliente || "—"}
+                          {c.codigo_cliente ? `${c.codigo_cliente} - ${c.nome_cliente || "—"}` : (c.nome_cliente || "—")}
                         </div>
                         <div style={{ fontSize:12, color:"#60a5fa" }}>{c.loja || "—"}</div>
                       </div>
